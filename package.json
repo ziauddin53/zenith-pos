@@ -7,11 +7,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:github": "cross-env GITHUB_PAGES=true tsc && vite build",
     "postbuild": "node scripts/obfuscate.js",
     "preview": "vite preview",
+
     "electron:start": "npm run build && electron .",
     "electron:pack": "npm run build && electron-builder --dir",
     "electron:dist": "npm run build && electron-builder",
+
     "android:init": "cap add android",
     "android:build": "npm run build && cap sync && cap open android"
   },
