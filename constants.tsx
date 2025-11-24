@@ -137,6 +137,11 @@ const KeyboardIcon: React.FC<{ className?: string }> = (props) => (
     </svg>
 );
 
+const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" />
+    </svg>
+);
 
 export const ICONS = {
     ChartBarIcon,
@@ -160,7 +165,8 @@ export const ICONS = {
     PrinterIcon,
     GlobeAltIcon,
     ChatBubbleLeftRightIcon,
-    KeyboardIcon
+    KeyboardIcon,
+    BuildingStorefrontIcon
 };
 
 // --- TRANSLATIONS & CURRENCY ---
@@ -255,7 +261,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
         'Payment Success': 'পেমেন্ট সফল হয়েছে',
         'WhatsApp Invoice': 'হোয়াটসঅ্যাপ ইনভয়েস',
         'Out of Stock': 'স্টক শেষ',
-        'Stock Limit Exceeded': 'স্টক এর চেয়ে বেশি সিলেক্ট করা যাবে না',
+        'Stock Limit Exceeded': 'স্টক এর চেয়ে বেশি পণ্য যোগ করা যাবে না',
     }
 };
 
@@ -293,7 +299,7 @@ export const WIDGETS_CONFIG = [
     { id: 'aiInsights', name: 'AI-Powered Insights', roles: [Role.Admin, Role.Manager] },
 ];
 
-const getDefaultWidgetsForRole = (role: Role): Record<string, boolean> => {
+export const getDefaultWidgetsForRole = (role: Role): Record<string, boolean> => {
     const widgets: Record<string, boolean> = {};
     WIDGETS_CONFIG.forEach(widget => {
         widgets[widget.id] = widget.roles.includes(role);
@@ -316,7 +322,6 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
 export const LICENSE_VERIFICATION_SECRET = "ZENITH_POS_SECRET_KEY_2025"; // Shared secret for signature generation
 
 // Simple hash function for signature (Simple custom hash for demo purposes)
-// In a real production app, consider using a more robust crypto library or Web Crypto API
 const generateSignature = (data: string, secret: string) => {
     const text = data + secret;
     let hash = 0, i, chr;
@@ -340,7 +345,8 @@ export const validateLicenseKey = (key: string, businessName?: string): { valid:
                  organizationId: 'org_coffee',
                  validUntil: '2025-12-31T23:59:59Z',
                  planType: 'Enterprise',
-                 status: 'Active'
+                 status: 'Active',
+                 maxShops: Infinity
              }
          };
     }
@@ -352,39 +358,54 @@ export const validateLicenseKey = (key: string, businessName?: string): { valid:
                  organizationId: 'org_tech',
                  validUntil: '2025-12-31T23:59:59Z',
                  planType: 'Premium',
-                 status: 'Active'
+                 status: 'Active',
+                 maxShops: 1
              }
          };
     }
 
     const parts = key.trim().toUpperCase().split('-');
-    // Format: ZENITH-SERIAL-YEAR-SIGNATURE (4 parts)
-    if (parts.length !== 4 || parts[0] !== 'ZENITH') {
+    
+    // Check for OLD format: ZENITH-SERIAL-YEAR-SIG (4 parts)
+    // Check for NEW format: ZENITH-TYPE-SERIAL-YEAR-SIG (5 parts)
+    
+    if (parts.length < 4 || parts[0] !== 'ZENITH') {
         return { valid: false, error: "Invalid key format." };
     }
 
-    const [prefix, serial, year, signature] = parts;
+    let type = 'SINGLE'; // Default for old keys
+    let serial = '';
+    let year = '';
+    let signature = '';
+    let dataToSignBase = '';
+
+    if (parts.length === 5) {
+        // NEW FORMAT: ZENITH-TYPE-SERIAL-YEAR-SIG
+        [, type, serial, year, signature] = parts;
+        dataToSignBase = `${parts[0]}-${type}-${serial}-${year}`;
+    } else {
+        // OLD FORMAT: ZENITH-SERIAL-YEAR-SIG
+        [, serial, year, signature] = parts;
+        dataToSignBase = `${parts[0]}-${serial}-${year}`;
+    }
     
-    // We validate the signature in two ways to prevent errors:
-    // 1. Strict Binding: Check signature WITH the business name (for keys that are locked to a specific business).
-    // 2. Generic Binding: Check signature WITHOUT the business name (for general-purpose keys).
-    
+    // Validation logic (Strict Name Binding vs Generic)
     let isValidSignature = false;
 
-    // Method 1: Check with Business Name
-    let dataToSignStrict = `${prefix}-${serial}-${year}`;
+    // Method 1: Check with Business Name (Strict)
+    let dataToSignStrict = dataToSignBase;
     if (businessName) {
          const cleanName = businessName.trim().toUpperCase().replace(/\s+/g, '');
          dataToSignStrict += `-${cleanName}`;
     }
+    
     if (generateSignature(dataToSignStrict, LICENSE_VERIFICATION_SECRET) === signature) {
         isValidSignature = true;
     }
 
-    // Method 2: Check Generic (if strict failed)
+    // Method 2: Check Generic (without name) if strict failed
     if (!isValidSignature) {
-        const dataToSignGeneric = `${prefix}-${serial}-${year}`;
-        if (generateSignature(dataToSignGeneric, LICENSE_VERIFICATION_SECRET) === signature) {
+        if (generateSignature(dataToSignBase, LICENSE_VERIFICATION_SECRET) === signature) {
             isValidSignature = true;
         }
     }
@@ -399,14 +420,19 @@ export const validateLicenseKey = (key: string, businessName?: string): { valid:
         return { valid: false, error: "License key has expired." };
     }
 
+    // Map Type to Plan
+    const isMultiShop = type === 'MULTI';
+    const planType = isMultiShop ? 'Enterprise' : 'Premium';
+
     return {
         valid: true,
         license: {
             key: key,
             organizationId: `org_${serial.toLowerCase().replace(/[^a-z0-9]/g, '')}`, // Auto-generate org ID from serial
             validUntil: `${year}-12-31T23:59:59Z`,
-            planType: 'Premium', // Default to Premium for generated keys
-            status: 'Active'
+            planType: planType,
+            status: 'Active',
+            maxShops: isMultiShop ? Infinity : 1
         }
     };
 };
@@ -414,23 +440,23 @@ export const validateLicenseKey = (key: string, businessName?: string): { valid:
 // Used by LicenseGate.tsx to maintain compatibility with existing Mock array import
 export const MOCK_MASTER_LICENSES: MasterLicense[] = [
   // These are kept for reference, but logic now uses validateLicenseKey
-  { key: 'ZENITH-SUPER-2025-DEMO', organizationId: 'org_coffee', validUntil: '2025-12-31T23:59:59Z', planType: 'Enterprise', status: 'Active' },
-  { key: 'ZENITH-TECH-2025-DEMO', organizationId: 'org_tech', validUntil: '2025-12-31T23:59:59Z', planType: 'Premium', status: 'Active' },
+  { key: 'ZENITH-SUPER-2025-DEMO', organizationId: 'org_coffee', validUntil: '2025-12-31T23:59:59Z', planType: 'Enterprise', status: 'Active', maxShops: Infinity },
+  { key: 'ZENITH-TECH-2025-DEMO', organizationId: 'org_tech', validUntil: '2025-12-31T23:59:59Z', planType: 'Premium', status: 'Active', maxShops: 1 },
 ];
 
 
 export const MOCK_USERS: User[] = [
   // Organization 1: Zenith Coffee
-  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager) },
-  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', password: '123', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
+  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', password: '123', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager) },
+  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', password: '123', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
   
   // Organization 2: Tech Zone
-  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', password: '123', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
+  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', password: '123', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
   
   // Viewer for Org 1
-  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer) },
+  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', password: '123', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer) },
 ];
 
 export const MOCK_PRODUCTS: Product[] = [

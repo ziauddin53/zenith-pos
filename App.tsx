@@ -9,11 +9,12 @@ import Reports from './components/Reports';
 import GenericView from './components/GenericView';
 import Settings from './components/Settings';
 import { LicenseGate } from './components/LicenseGate';
+import { Auth } from './components/Auth';
 import VirtualKeyboard from './components/VirtualKeyboard';
 import { Role, User, Product, Customer, Sale, LicenseKey, Notification, Supplier, PurchaseOrder, Shift, HeldCart, Expense, MasterLicense, Language, Currency } from './types';
-import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, TRANSLATIONS, CURRENCIES, TRIAL_DURATION_DAYS } from './constants';
+import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, TRANSLATIONS, CURRENCIES, TRIAL_DURATION_DAYS, getDefaultWidgetsForRole } from './constants';
 
-// Helper to load data from LocalStorage or fall back to Mocks
+// Helper to load from LocalStorage or fall back to Mocks
 function loadFromStorage<T>(key: string, fallback: T[]): T[] {
   const saved = localStorage.getItem(key);
   return saved ? JSON.parse(saved) : fallback;
@@ -24,6 +25,10 @@ function App() {
   const [activeLicense, setActiveLicense] = useState<MasterLicense | null>(null);
   const [isLoadingLicense, setIsLoadingLicense] = useState(true);
   const [isInTrial, setIsInTrial] = useState(false);
+
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // --- 1. GLOBAL PERSISTENT STATE (Loads from Browser Storage) ---
   const [allEmployees, setAllEmployees] = useState<User[]>(() => loadFromStorage('zenith_users', MOCK_USERS));
@@ -40,7 +45,6 @@ function App() {
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
 
   // App UI State
-  const [currentUser, setCurrentUser] = useState<User>(allEmployees[0]); 
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -89,6 +93,7 @@ function App() {
   useEffect(() => {
     const storedLicense = localStorage.getItem('zenith_master_license');
     const trialStart = localStorage.getItem('zenith_trial_start');
+    const savedUser = localStorage.getItem('zenith_current_user');
 
     // Check License First
     if (storedLicense) {
@@ -96,8 +101,16 @@ function App() {
         const parsedLicense = JSON.parse(storedLicense) as MasterLicense;
         if (new Date(parsedLicense.validUntil) > new Date()) {
            setActiveLicense(parsedLicense);
-           const orgAdmin = allEmployees.find(u => u.organizationId === parsedLicense.organizationId && u.role === Role.Admin);
-           if (orgAdmin) setCurrentUser(orgAdmin);
+           
+           // Try to restore session if user was logged in
+           if (savedUser) {
+               const userObj = JSON.parse(savedUser);
+               // Verify user still exists
+               const exists = allEmployees.find(u => u.id === userObj.id);
+               if (exists) {
+                   setCurrentUser(exists);
+               }
+           }
            setIsLoadingLicense(false);
            return;
         } else {
@@ -117,17 +130,19 @@ function App() {
 
         if (diffDays <= TRIAL_DURATION_DAYS) {
             setIsInTrial(true);
-            // For trial, we use a default or existing user context
-            // In a real app, we might create a temp trial user
             setActiveLicense({ 
                 key: 'TRIAL_MODE', 
                 organizationId: 'org_coffee', // Default to coffee org for trial
                 validUntil: new Date(now.getTime() + (TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)).toISOString(),
                 planType: 'Standard',
-                status: 'Active'
+                status: 'Active',
+                maxShops: Infinity
             });
-             // Ensure a user exists for trial org if needed, or just use existing
-             if(!currentUser) setCurrentUser(MOCK_USERS[0]);
+             
+            // Auto-login for trial convenience if no session
+             if(!currentUser && savedUser) {
+                 setCurrentUser(JSON.parse(savedUser));
+             }
         } else {
             localStorage.removeItem('zenith_trial_start'); // Trial Expired
         }
@@ -136,17 +151,61 @@ function App() {
     setIsLoadingLicense(false);
   }, []);
 
+  // --- AUTH LOGIC ---
+
+  const handleLogin = (email: string, pass: string) => {
+      if (!activeLicense) return;
+      
+      const user = allEmployees.find(u => 
+          u.email.toLowerCase() === email.toLowerCase() && 
+          u.password === pass &&
+          u.organizationId === activeLicense.organizationId
+      );
+
+      if (user) {
+          setCurrentUser(user);
+          setAuthError(null);
+          localStorage.setItem('zenith_current_user', JSON.stringify(user));
+          setActiveView(user.role === Role.Cashier ? 'pos' : 'dashboard');
+      } else {
+          setAuthError("Invalid email or password for this organization.");
+      }
+  };
+
+  const handleRegister = (name: string, email: string, pass: string) => {
+      if (!activeLicense) return;
+
+      const existingUser = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (existingUser) {
+          setAuthError("User with this email already exists.");
+          return;
+      }
+
+      const newUser: User = {
+          id: `u-${Date.now()}`,
+          name: name,
+          email: email,
+          password: pass,
+          role: Role.Admin, // First user registered is Admin
+          organizationId: activeLicense.organizationId,
+          avatarUrl: `https://i.pravatar.cc/150?u=${Date.now()}`,
+          dashboardWidgets: getDefaultWidgetsForRole(Role.Admin)
+      };
+
+      setAllEmployees(prev => [...prev, newUser]);
+      setCurrentUser(newUser);
+      setAuthError(null);
+      localStorage.setItem('zenith_current_user', JSON.stringify(newUser));
+      setActiveView('dashboard');
+  };
+
+
   const handleLicenseActivation = (license: MasterLicense) => {
     localStorage.setItem('zenith_master_license', JSON.stringify(license));
     localStorage.removeItem('zenith_trial_start'); // Clear trial if license added
     setActiveLicense(license);
     setIsInTrial(false);
-    setActiveView('dashboard');
-    
-    const orgAdmin = allEmployees.find(u => u.organizationId === license.organizationId && u.role === Role.Admin);
-    if (orgAdmin) {
-      setCurrentUser(orgAdmin);
-    }
+    // Don't auto login, user needs to register or login now
   };
 
   const handleStartTrial = () => {
@@ -160,23 +219,36 @@ function App() {
           organizationId: 'org_coffee', // Default demo org
           validUntil: new Date(Date.now() + (7 * 86400000)).toISOString(),
           planType: 'Standard',
-          status: 'Active'
+          status: 'Active',
+          maxShops: Infinity
       };
       setActiveLicense(trialLicense);
-      // Set user to demo admin
+      // Automatically log in as demo admin for trial flow
       const demoUser = MOCK_USERS.find(u => u.role === Role.Admin && u.organizationId === 'org_coffee');
-      if(demoUser) setCurrentUser(demoUser);
+      if(demoUser) {
+          setCurrentUser(demoUser);
+          localStorage.setItem('zenith_current_user', JSON.stringify(demoUser));
+      }
   };
 
   const handleDeactivateLicense = () => {
     localStorage.removeItem('zenith_master_license');
     localStorage.removeItem('zenith_trial_start');
+    localStorage.removeItem('zenith_current_user');
     setActiveLicense(null);
+    setCurrentUser(null);
     setIsInTrial(false);
   }
 
+  const handleLogout = () => {
+      setCurrentUser(null);
+      localStorage.removeItem('zenith_current_user');
+      setAuthError(null);
+  };
+
   // --- 5. DERIVED STATE (Multi-Tenancy Filtering) ---
-  const currentOrgId = currentUser.organizationId;
+  // Logic only runs if currentUser is present
+  const currentOrgId = currentUser?.organizationId;
 
   const employees = useMemo(() => allEmployees.filter(u => u.organizationId === currentOrgId), [allEmployees, currentOrgId]);
   const products = useMemo(() => allProducts.filter(p => p.organizationId === currentOrgId), [allProducts, currentOrgId]);
@@ -191,6 +263,7 @@ function App() {
   useEffect(() => {
     if (currentOrgId === 'org_coffee') setBusinessName('Zenith Coffee');
     else if (currentOrgId === 'org_tech') setBusinessName('Tech Zone');
+    else if (currentOrgId) setBusinessName(`Shop (${currentOrgId.substring(4, 8).toUpperCase()})`);
     else setBusinessName('Zenith POS');
   }, [currentOrgId]);
 
@@ -215,26 +288,19 @@ function App() {
   }, [currency]);
 
   // --- 8. HANDLERS & SYNC ---
-
-  const handleLogout = () => {
-    const currentOrgUsers = employees;
-    const currentIndex = currentOrgUsers.findIndex(u => u.id === currentUser.id);
-    const nextUser = currentOrgUsers[(currentIndex + 1) % currentOrgUsers.length];
-    setCurrentUser(nextUser);
-    
-    const defaultViewForRole = nextUser.role === Role.Cashier ? 'pos' : 'dashboard';
-    setActiveView(defaultViewForRole);
-  }
   
   const handleWidgetChange = (widgetId: string, isVisible: boolean) => {
+    if (!currentUser) return;
     const newWidgets = { ...currentUser.dashboardWidgets, [widgetId]: isVisible };
     const updatedUser = { ...currentUser, dashboardWidgets: newWidgets };
     setCurrentUser(updatedUser);
+    localStorage.setItem('zenith_current_user', JSON.stringify(updatedUser));
     // Update in master list
     setAllEmployees(prev => prev.map(emp => emp.id === currentUser.id ? updatedUser : emp));
   };
 
   const handleAddSale = (saleData: Omit<Sale, 'id' | 'cashier' | 'cashierId' | 'date'>) => {
+    if (!currentUser) return;
     const dueAmount = saleData.total - saleData.amountPaid;
     const newSale: Sale = {
         ...saleData,
@@ -283,6 +349,7 @@ function App() {
   };
 
   const handleToggleShift = () => {
+    if (!currentUser) return;
     if (activeShift) {
         const endedShift = { ...activeShift, endTime: new Date().toISOString() };
         setActiveShift(null);
@@ -301,6 +368,8 @@ function App() {
   };
 
   const renderContent = () => {
+    if (!currentUser) return null;
+
     switch (activeView) {
       case 'dashboard':
         return <Dashboard 
@@ -417,6 +486,7 @@ function App() {
                     const newEmployee: User = {
                         ...item,
                         id: `u${Date.now()}`,
+                        password: '123', // Default password for new employees added by admin
                         avatarUrl: (item as Partial<User>).avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`,
                         organizationId: currentOrgId
                     } as User;
@@ -502,6 +572,10 @@ function App() {
 
   if (!activeLicense) {
     return <LicenseGate onSuccess={handleLicenseActivation} onStartTrial={handleStartTrial} />;
+  }
+
+  if (!currentUser) {
+      return <Auth onLogin={handleLogin} onRegister={handleRegister} error={authError} onClearError={() => setAuthError(null)} />;
   }
 
   return (

@@ -12,6 +12,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  password?: string; // Added password field
   role: Role;
   avatarUrl: string;
   dashboardWidgets: Record<string, boolean>;
@@ -161,6 +162,7 @@ export interface MasterLicense {
   validUntil: string; // ISO Date
   planType: 'Standard' | 'Premium' | 'Enterprise';
   status: 'Active' | 'Revoked' | 'Expired';
+  maxShops?: number; // 1 for Single, Infinity for Multi
 }
 
 // --- NEW TYPES FOR MULTI-LANGUAGE & CURRENCY ---

@@ -145,6 +145,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
+        // Updated Stock Limit Logic
         if (existing.quantity >= product.stock) {
             alert(t('Stock Limit Exceeded'));
             return prev;
@@ -159,10 +160,14 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
     setCart(prev => prev.map(item => {
       if (item.id === productId) {
         const newQuantity = item.quantity + delta;
-        if (delta > 0 && newQuantity > item.stock) {
+        
+        // Find original product to check stock
+        const originalProduct = products.find(p => p.id === productId);
+        if (originalProduct && delta > 0 && newQuantity > originalProduct.stock) {
              alert(t('Stock Limit Exceeded'));
              return item;
         }
+        
         return { ...item, quantity: Math.max(1, newQuantity) };
       }
       return item;
@@ -321,6 +326,36 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
     window.print();
   };
 
+  // Handle Search Enter Key for Scanning
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return;
+
+        // 1. Exact SKU Match (Highest priority for scanners)
+        const exactSkuMatch = products.find(p => p.sku.toLowerCase() === query);
+        if (exactSkuMatch) {
+            addToCart(exactSkuMatch);
+            setSearchQuery('');
+            return;
+        }
+
+        // 2. Exact Name Match
+        const exactNameMatch = products.find(p => p.name.toLowerCase() === query);
+        if (exactNameMatch) {
+            addToCart(exactNameMatch);
+            setSearchQuery('');
+            return;
+        }
+
+        // 3. Single Result in Filter
+        if (filteredProducts.length === 1) {
+            addToCart(filteredProducts[0]);
+            setSearchQuery('');
+        }
+    }
+  };
+
 
   return (
     <div className="flex flex-col h-full md:flex-row gap-6 overflow-hidden">
@@ -334,6 +369,8 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                     placeholder={t('Search')} 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    autoFocus
                     className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg pl-10 pr-4 py-3 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 />
             </div>
@@ -347,12 +384,12 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                     return (
                     <div 
                         key={product.id} 
-                        onClick={() => addToCart(product)}
-                        className={`bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-all flex flex-col items-center text-center group ${isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:border-primary-300'}`}
+                        onClick={() => !isOutOfStock && addToCart(product)}
+                        className={`bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-all flex flex-col items-center text-center group ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800' : 'cursor-pointer hover:shadow-md hover:border-primary-300'}`}
                     >
                         <div className="w-20 h-20 mb-3 rounded-md bg-white dark:bg-neutral-600 flex items-center justify-center overflow-hidden">
                             {product.imageUrl ? (
-                                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                                <img src={product.imageUrl} alt={product.name} className={`w-full h-full object-cover ${isOutOfStock ? 'grayscale' : ''}`} />
                             ) : (
                                 <CubeIcon className="w-8 h-8 text-neutral-300 group-hover:text-primary-500 transition-colors" />
                             )}
