@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DashboardCard, SalesLineChart, TopProductsPieChart, RecentActivity, AiInsights, LowStockAlerts } from './DashboardWidgets';
 import { ICONS, WIDGETS_CONFIG } from '../constants';
@@ -19,9 +20,10 @@ interface CustomizeDashboardModalProps {
     onClose: () => void;
     userWidgets: Record<string, boolean>;
     onWidgetChange: (widgetId: string, isVisible: boolean) => void;
+    t: (key: string) => string;
 }
 
-const CustomizeDashboardModal: React.FC<CustomizeDashboardModalProps> = ({ isOpen, onClose, userWidgets, onWidgetChange }) => {
+const CustomizeDashboardModal: React.FC<CustomizeDashboardModalProps> = ({ isOpen, onClose, userWidgets, onWidgetChange, t }) => {
     if (!isOpen) return null;
 
     return (
@@ -34,7 +36,7 @@ const CustomizeDashboardModal: React.FC<CustomizeDashboardModalProps> = ({ isOpe
                 <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
                     {WIDGETS_CONFIG.map(widget => (
                         <label key={widget.id} className="flex items-center justify-between p-3 rounded-lg bg-neutral-50 dark:bg-neutral-700/50">
-                           <span className="font-medium text-neutral-800 dark:text-neutral-100">{widget.name}</span>
+                           <span className="font-medium text-neutral-800 dark:text-neutral-100">{t(widget.name)}</span>
                             <input
                                 type="checkbox"
                                 checked={!!userWidgets[widget.id]}
@@ -56,9 +58,11 @@ interface DashboardProps {
   products: Product[];
   user: User;
   onWidgetChange: (widgetId: string, isVisible: boolean) => void;
+  formatCurrency: (amount: number) => string;
+  t: (key: string) => string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange }) => {
+const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange, formatCurrency, t }) => {
   const [isCustomizeModalOpen, setCustomizeModalOpen] = useState(false);
   const { dashboardWidgets } = user;
 
@@ -67,7 +71,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange })
   return (
     <div className="space-y-6">
         <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">{t('Dashboard')}</h1>
             <button 
                 onClick={() => setCustomizeModalOpen(true)}
                 className="flex items-center gap-2 bg-white dark:bg-neutral-700/80 border border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-200 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-600 transition-colors"
@@ -85,10 +89,10 @@ const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange })
         )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dashboardWidgets.totalRevenue && <DashboardCard title="Total Revenue" value="$75,231.89" change="+12.5%" changeType="increase" icon={<ChartBarIcon className="w-6 h-6" />} />}
-            {dashboardWidgets.newCustomers && <DashboardCard title="New Customers" value="1,204" change="+8.2%" changeType="increase" icon={<UsersIcon className="w-6 h-6" />} />}
-            {dashboardWidgets.productsSold && <DashboardCard title="Products Sold" value="5,890" change="-1.7%" changeType="decrease" icon={<CubeIcon className="w-6 h-6" />} />}
-            {dashboardWidgets.todaysTransactions && <DashboardCard title="Today's Transactions" value="23" change="+5" changeType="increase" icon={<ShoppingCartIcon className="w-6 h-6" />} />}
+            {dashboardWidgets.totalRevenue && <DashboardCard title={t('Total Revenue')} value={formatCurrency(75231.89)} change="+12.5%" changeType="increase" icon={<ChartBarIcon className="w-6 h-6" />} />}
+            {dashboardWidgets.newCustomers && <DashboardCard title={t('New Customers')} value="1,204" change="+8.2%" changeType="increase" icon={<UsersIcon className="w-6 h-6" />} />}
+            {dashboardWidgets.productsSold && <DashboardCard title={t('Products Sold')} value="5,890" change="-1.7%" changeType="decrease" icon={<CubeIcon className="w-6 h-6" />} />}
+            {dashboardWidgets.todaysTransactions && <DashboardCard title={t('Todays Transactions')} value="23" change="+5" changeType="increase" icon={<ShoppingCartIcon className="w-6 h-6" />} />}
         </div>
         
         {(dashboardWidgets.salesOverview || dashboardWidgets.topProducts) && (
@@ -127,6 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange })
             onClose={() => setCustomizeModalOpen(false)}
             userWidgets={dashboardWidgets}
             onWidgetChange={onWidgetChange}
+            t={t}
         />
     </div>
   );

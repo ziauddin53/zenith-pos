@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Role, User, Product, Customer, Sale, ActivityLog, NavItem, LicenseKey, Notification, Supplier, PurchaseOrder, Expense, MasterLicense } from './types';
+import { Role, User, Product, Customer, Sale, ActivityLog, NavItem, LicenseKey, Notification, Supplier, PurchaseOrder, Expense, MasterLicense, Language, Currency, SystemSettings } from './types';
 
 // --- ICONS ---
 // Using Heroicons (MIT License)
@@ -100,6 +100,43 @@ const CloudIcon: React.FC<{ className?: string }> = (props) => (
     </svg>
 );
 
+const ArrowUpTrayIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+    </svg>
+);
+
+const QrCodeIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+    </svg>
+);
+
+const PrinterIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0h9m9 0h-9m9 0a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-13.5a2.25 2.25 0 00-2.25 2.25v7.5a2.25 2.25 0 002.25 2.25m0 0V21h13.5v-2.25" />
+    </svg>
+);
+
+const GlobeAltIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+    </svg>
+);
+
+const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+    </svg>
+);
+
+const KeyboardIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6ZM5.625 10.875a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM5.625 14.625a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM9 18.375a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Z" />
+    </svg>
+);
+
 
 export const ICONS = {
     ChartBarIcon,
@@ -118,6 +155,110 @@ export const ICONS = {
     TagIcon,
     WifiIcon,
     CloudIcon,
+    ArrowUpTrayIcon,
+    QrCodeIcon,
+    PrinterIcon,
+    GlobeAltIcon,
+    ChatBubbleLeftRightIcon,
+    KeyboardIcon
+};
+
+// --- TRANSLATIONS & CURRENCY ---
+
+export const CURRENCIES: Record<Currency, { symbol: string; rate: number }> = {
+    'USD': { symbol: '$', rate: 1 },
+    'BDT': { symbol: '৳', rate: 120 },
+    'EUR': { symbol: '€', rate: 0.92 },
+    'INR': { symbol: '₹', rate: 83 },
+};
+
+export const TRANSLATIONS: Record<Language, Record<string, string>> = {
+    'en': {
+        'Dashboard': 'Dashboard',
+        'POS': 'POS',
+        'Products': 'Products',
+        'Purchases': 'Purchases',
+        'Suppliers': 'Suppliers',
+        'Customers': 'Customers',
+        'Employees': 'Employees',
+        'Expenses': 'Expenses',
+        'Reports': 'Reports',
+        'Settings': 'Settings',
+        'Search': 'Search...',
+        'Add New': 'Add New',
+        'Import CSV': 'Import CSV',
+        'Print Labels': 'Print Labels',
+        'Total Revenue': 'Total Revenue',
+        'New Customers': 'New Customers',
+        'Products Sold': 'Products Sold',
+        'Todays Transactions': "Today's Transactions",
+        'Sales Overview': 'Sales Overview',
+        'Top Selling Products': 'Top Selling Products',
+        'Low Stock Alerts': 'Low Stock Alerts',
+        'AI-Powered Insights': 'AI-Powered Insights',
+        'Online': 'Online',
+        'Offline': 'Offline',
+        'Clock In': 'Clock In',
+        'Clock Out': 'Clock Out',
+        'Shift Started': 'Shift Started',
+        'Current Order': 'Current Order',
+        'Held Orders': 'Held Orders',
+        'Hold': 'Hold',
+        'Charge': 'Charge',
+        'Clear Cart': 'Clear Cart',
+        'Subtotal': 'Subtotal',
+        'Tax': 'Tax',
+        'Total': 'Total',
+        'Print Receipt': 'Print Receipt',
+        'Payment Success': 'Payment Successful',
+        'WhatsApp Invoice': 'WhatsApp Invoice',
+    },
+    'bn': {
+        'Dashboard': 'ড্যাশবোর্ড',
+        'POS': 'বিক্রয় (POS)',
+        'Products': 'পণ্য তালিকা',
+        'Purchases': 'ক্রয়',
+        'Suppliers': 'সরবরাহকারী',
+        'Customers': 'গ্রাহক',
+        'Employees': 'কর্মচারী',
+        'Expenses': 'খরচ',
+        'Reports': 'রিপোর্ট',
+        'Settings': 'সেটিংস',
+        'Search': 'অনুসন্ধান...',
+        'Add New': 'নতুন যোগ করুন',
+        'Import CSV': 'ইম্পোর্ট CSV',
+        'Print Labels': 'লেবেল প্রিন্ট',
+        'Total Revenue': 'মোট আয়',
+        'New Customers': 'নতুন গ্রাহক',
+        'Products Sold': 'বিক্রিত পণ্য',
+        'Todays Transactions': 'আজকের লেনদেন',
+        'Sales Overview': 'বিক্রয় চিত্র',
+        'Top Selling Products': 'সেরা বিক্রিত পণ্য',
+        'Low Stock Alerts': 'স্টক সতর্কতা',
+        'AI-Powered Insights': 'এআই ইনসাইটস',
+        'Online': 'অনলাইন',
+        'Offline': 'অফলাইন',
+        'Clock In': 'শিফট শুরু',
+        'Clock Out': 'শিফট শেষ',
+        'Shift Started': 'শিফট চলছে',
+        'Current Order': 'বর্তমান অর্ডার',
+        'Held Orders': 'হোল্ড অর্ডার',
+        'Hold': 'হোল্ড',
+        'Charge': 'বিল করুন',
+        'Clear Cart': 'খালি করুন',
+        'Subtotal': 'সাব-টোটাল',
+        'Tax': 'ভ্যাট/ট্যাক্স',
+        'Total': 'সর্বমোট',
+        'Print Receipt': 'রিসিট প্রিন্ট',
+        'Payment Success': 'পেমেন্ট সফল হয়েছে',
+        'WhatsApp Invoice': 'হোয়াটসঅ্যাপ ইনভয়েস',
+    }
+};
+
+export const DEFAULT_SETTINGS: SystemSettings = {
+    language: 'en',
+    currency: 'USD',
+    taxRate: 8,
 };
 
 // --- NAVIGATION ---
@@ -166,43 +307,113 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
   { id: 'n4', title: 'Weekly Report Ready', message: 'Your weekly sales summary is available.', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: true, link: 'reports' },
 ];
 
-// --- MASTER LICENSE KEYS (Simulating a remote DB) ---
+// --- LICENSE VERIFICATION LOGIC ---
+
+export const LICENSE_VERIFICATION_SECRET = "ZENITH_POS_SECRET_KEY_2025"; // Shared secret for signature generation
+
+// Simple hash function for signature (Simple custom hash for demo purposes)
+// In a real production app, consider using a more robust crypto library or Web Crypto API
+const generateSignature = (data: string, secret: string) => {
+    const text = data + secret;
+    let hash = 0, i, chr;
+    if (text.length === 0) return hash.toString();
+    for (i = 0; i < text.length; i++) {
+      chr = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    // Convert to hex and take last 4 chars, ensure positive and padded
+    return Math.abs(hash).toString(16).substring(0, 4).toUpperCase().padStart(4, '0');
+};
+
+export const validateLicenseKey = (key: string, businessName?: string): { valid: boolean; license?: MasterLicense; error?: string } => {
+    // Check for hardcoded keys first (Backward compatibility/Demo)
+    if (key === 'ZENITH-SUPER-2025-DEMO') {
+         return {
+             valid: true,
+             license: {
+                 key: key,
+                 organizationId: 'org_coffee',
+                 validUntil: '2025-12-31T23:59:59Z',
+                 planType: 'Enterprise',
+                 status: 'Active'
+             }
+         };
+    }
+    if (key === 'ZENITH-TECH-2025-DEMO') {
+         return {
+             valid: true,
+             license: {
+                 key: key,
+                 organizationId: 'org_tech',
+                 validUntil: '2025-12-31T23:59:59Z',
+                 planType: 'Premium',
+                 status: 'Active'
+             }
+         };
+    }
+
+    const parts = key.trim().toUpperCase().split('-');
+    // Format: ZENITH-SERIAL-YEAR-SIGNATURE (4 parts)
+    if (parts.length !== 4 || parts[0] !== 'ZENITH') {
+        return { valid: false, error: "Invalid key format." };
+    }
+
+    const [prefix, serial, year, signature] = parts;
+    
+    // Reconstruct the signed data. If businessName is provided, include it.
+    // This ensures the key is LOCKED to that specific business name.
+    let dataToSign = `${prefix}-${serial}-${year}`;
+    if (businessName) {
+         // Use a simplified version of name (uppercase, no spaces) for consistent signing
+         const cleanName = businessName.trim().toUpperCase().replace(/\s+/g, '');
+         dataToSign += `-${cleanName}`;
+    }
+
+    const expectedSignature = generateSignature(dataToSign, LICENSE_VERIFICATION_SECRET);
+
+    if (signature !== expectedSignature) {
+        return { valid: false, error: "Invalid license signature or business name mismatch." };
+    }
+
+    // Check Expiry
+    const currentYear = new Date().getFullYear();
+    if (parseInt(year) < currentYear) {
+        return { valid: false, error: "License key has expired." };
+    }
+
+    return {
+        valid: true,
+        license: {
+            key: key,
+            organizationId: `org_${serial.toLowerCase().replace(/[^a-z0-9]/g, '')}`, // Auto-generate org ID from serial
+            validUntil: `${year}-12-31T23:59:59Z`,
+            planType: 'Premium', // Default to Premium for generated keys
+            status: 'Active'
+        }
+    };
+};
+
+// Used by LicenseGate.tsx to maintain compatibility with existing Mock array import
 export const MOCK_MASTER_LICENSES: MasterLicense[] = [
-  {
-    key: 'ZENITH-SUPER-2025-DEMO',
-    organizationId: 'org_coffee',
-    validUntil: '2025-12-31T23:59:59Z',
-    planType: 'Enterprise',
-    status: 'Active'
-  },
-  {
-    key: 'ZENITH-TECH-2025-DEMO',
-    organizationId: 'org_tech',
-    validUntil: '2025-12-31T23:59:59Z',
-    planType: 'Premium',
-    status: 'Active'
-  },
-  {
-    key: 'ZENITH-EXPIRED-KEY',
-    organizationId: 'org_demo',
-    validUntil: '2023-01-01T00:00:00Z',
-    planType: 'Standard',
-    status: 'Expired'
-  }
+  // These are kept for reference, but logic now uses validateLicenseKey
+  { key: 'ZENITH-SUPER-2025-DEMO', organizationId: 'org_coffee', validUntil: '2025-12-31T23:59:59Z', planType: 'Enterprise', status: 'Active' },
+  { key: 'ZENITH-TECH-2025-DEMO', organizationId: 'org_tech', validUntil: '2025-12-31T23:59:59Z', planType: 'Premium', status: 'Active' },
 ];
+
 
 export const MOCK_USERS: User[] = [
   // Organization 1: Zenith Coffee
-  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', password: '123456', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', password: '123456', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager) },
-  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', password: '123456', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
+  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager) },
+  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
   
   // Organization 2: Tech Zone
-  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', password: '123456', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', password: '123456', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
+  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
   
   // Viewer for Org 1
-  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', password: '123456', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer) },
+  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer) },
 ];
 
 export const MOCK_PRODUCTS: Product[] = [
@@ -342,7 +553,7 @@ export interface ManagementColumn<T> {
 export interface ManagementFormField<T> {
     key: keyof T;
     label: string;
-    type: 'text' | 'number' | 'email' | 'password' | 'select' | 'image' | 'date';
+    type: 'text' | 'number' | 'email' | 'select' | 'image' | 'date';
     required?: boolean;
     options?: { value: string; label: string }[];
 }
@@ -418,7 +629,6 @@ export const MANAGEMENT_CONFIG = {
       formFields: [
           { key: 'name', label: 'Name', type: 'text', required: true },
           { key: 'email', label: 'Email', type: 'email', required: true },
-          { key: 'password', label: 'Password', type: 'password', required: true },
           { key: 'role', label: 'Role', type: 'select', required: true, options: Object.values(Role).map(role => ({ value: role, label: role })) },
           { key: 'avatarUrl', label: 'Photo', type: 'image', required: false },
       ] as ManagementFormField<User>[],
@@ -477,3 +687,6 @@ export const MANAGEMENT_CONFIG = {
         ] as ManagementFormField<Expense>[],
     }
   };
+
+export const LOYALTY_CONVERSION_RATE = 0.01; // 1 Point = $0.01
+export const TRIAL_DURATION_DAYS = 7;

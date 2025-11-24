@@ -1,28 +1,26 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Sale, User, Customer, Role } from '../types';
-
-declare const XLSX: any; // For SheetJS library loaded from CDN
 
 // Icons
 const DocumentArrowDownIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
 );
-const ChevronUpDownIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+const ChevronDownIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
 );
 const XCircleIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
 );
-const ChevronDownIcon: React.FC<{ className?: string }> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-);
 
+declare const XLSX: any; // For SheetJS library loaded from CDN (if used)
 
 interface ReportsProps {
     sales: Sale[];
     users: User[];
     customers: Customer[];
+    formatCurrency: (amount: number) => string;
 }
 
 const StatCard: React.FC<{ title: string, value: string }> = ({ title, value }) => (
@@ -32,7 +30,7 @@ const StatCard: React.FC<{ title: string, value: string }> = ({ title, value }) 
     </div>
 );
 
-const Reports: React.FC<ReportsProps> = ({ sales, users, customers }) => {
+const Reports: React.FC<ReportsProps> = ({ sales, users, customers, formatCurrency }) => {
     // State for filters
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -106,11 +104,11 @@ const Reports: React.FC<ReportsProps> = ({ sales, users, customers }) => {
         const totalTransactions = filteredSales.length;
         const avgSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
         return {
-            totalSales: totalSales.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+            totalSales: formatCurrency(totalSales),
             totalTransactions,
-            avgSaleValue: avgSaleValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+            avgSaleValue: formatCurrency(avgSaleValue),
         };
-    }, [filteredSales]);
+    }, [filteredSales, formatCurrency]);
     
     const chartData = useMemo(() => {
         if (filteredSales.length === 0) {
@@ -173,7 +171,6 @@ const Reports: React.FC<ReportsProps> = ({ sales, users, customers }) => {
                 headers.join(','),
                 ...data.map(row => Object.values(row).map(value => {
                     const stringValue = String(value);
-                    // Escape quotes by doubling them and wrap in quotes if it contains a comma
                     if (stringValue.includes(',') || stringValue.includes('"')) {
                         return `"${stringValue.replace(/"/g, '""')}"`;
                     }
@@ -190,11 +187,13 @@ const Reports: React.FC<ReportsProps> = ({ sales, users, customers }) => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        } else if (exportFormat === 'xlsx') {
+        } else if (exportFormat === 'xlsx' && typeof XLSX !== 'undefined') {
             const worksheet = XLSX.utils.json_to_sheet(data);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Sales");
             XLSX.writeFile(workbook, "sales_report.xlsx");
+        } else if (exportFormat === 'xlsx') {
+            alert("XLSX export not available (library not loaded).");
         }
     };
 
@@ -263,124 +262,108 @@ const Reports: React.FC<ReportsProps> = ({ sales, users, customers }) => {
                                     }}
                                     onFocus={() => setCustomerDropdownOpen(true)}
                                     placeholder="All Customers"
-                                    className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 pr-16 focus:ring-2 focus:ring-primary-500 focus:outline-none" 
+                                    className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none"
                                 />
-                                <div className="absolute right-1 flex items-center">
-                                    {selectedCustomer !== 'all' && (
-                                        <button onClick={handleClearCustomer} className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
-                                            <XCircleIcon className="w-5 h-5"/>
-                                        </button>
-                                    )}
-                                    <button onClick={() => setCustomerDropdownOpen(!isCustomerDropdownOpen)} className="p-1 text-neutral-400">
-                                        <ChevronUpDownIcon className="w-5 h-5" />
+                                {selectedCustomer !== 'all' && (
+                                    <button onClick={handleClearCustomer} className="absolute right-2 text-neutral-500 hover:text-red-500">
+                                        <XCircleIcon className="w-5 h-5" />
                                     </button>
-                                </div>
+                                )}
                             </div>
-
                             {isCustomerDropdownOpen && (
-                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-neutral-800 rounded-md shadow-lg max-h-60 overflow-auto border dark:border-neutral-700">
+                                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-neutral-700 rounded-md shadow-lg max-h-60 overflow-auto border dark:border-neutral-600">
                                     <ul>
-                                        {filteredCustomers.length > 0 ? filteredCustomers.map(c => (
-                                            <li key={c.id} onClick={() => handleSelectCustomer(c.id)} className="px-4 py-2 text-sm hover:bg-primary-500 hover:text-white cursor-pointer dark:hover:bg-primary-600">
+                                        <li onClick={() => handleSelectCustomer('all')} className="px-4 py-2 text-sm hover:bg-primary-50 dark:hover:bg-neutral-600 cursor-pointer text-neutral-700 dark:text-neutral-200">All Customers</li>
+                                        {filteredCustomers.map(c => (
+                                            <li key={c.id} onClick={() => handleSelectCustomer(c.id)} className="px-4 py-2 text-sm hover:bg-primary-50 dark:hover:bg-neutral-600 cursor-pointer text-neutral-700 dark:text-neutral-200">
                                                 {c.name}
                                             </li>
-                                        )) : <li className="px-4 py-2 text-sm text-neutral-500">No customers found</li>}
+                                        ))}
                                     </ul>
                                 </div>
                             )}
                         </div>
                     </div>
+
                     {/* Reset Button */}
-                    <div className="flex items-end">
-                        <button onClick={resetFilters} className="w-full bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-semibold p-2.5 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors">
-                            Reset
-                        </button>
+                    <div className="lg:col-span-5 flex justify-end">
+                        <button onClick={resetFilters} className="text-sm text-primary-600 hover:underline">Reset Filters</button>
                     </div>
                 </div>
             </div>
-            
-            {/* Summary */}
+
+            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard title="Total Sales" value={summary.totalSales} />
-                <StatCard title="Total Transactions" value={summary.totalTransactions.toString()} />
-                <StatCard title="Average Sale Value" value={summary.avgSaleValue} />
+                <StatCard title="Total Revenue" value={summary.totalSales} />
+                <StatCard title="Transactions" value={summary.totalTransactions.toString()} />
+                <StatCard title="Avg. Sale Value" value={summary.avgSaleValue} />
             </div>
 
-            {/* Sales Chart */}
-            <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold mb-4">Sales Trend</h3>
-                {chartData.length > 0 ? (
-                    <div style={{ width: '100%', height: 300 }}>
-                        <ResponsiveContainer>
-                            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(128, 128, 128, 0.2)" />
-                                <XAxis dataKey="date" tick={{ fill: '#94a3b8' }} fontSize={12} />
-                                <YAxis tick={{ fill: '#94a3b8' }} fontSize={12} tickFormatter={(value) => `$${value}`} />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
-                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '0.5rem' }}
-                                    formatter={(value: number) => [value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }), 'Sales']}
-                                    labelStyle={{ color: '#cbd5e1' }}
-                                />
-                                <Bar dataKey="total" fill="#4f46e5" name="Total Sales" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                ) : (
-                    <div className="text-center py-10 text-neutral-500 dark:text-neutral-400 h-[300px] flex items-center justify-center">
-                        <p>No data to display in chart for the selected filters.</p>
-                    </div>
-                )}
+            {/* Charts */}
+             <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-md">
+                <h3 className="text-lg font-semibold mb-4 text-neutral-800 dark:text-neutral-100">Sales Trend</h3>
+                <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(128,128,128,0.2)" />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 12 }} tickFormatter={(value) => `$${value}`} />
+                            <Tooltip 
+                                cursor={{ fill: 'rgba(128,128,128,0.1)' }}
+                                contentStyle={{ backgroundColor: '#1F2937', border: 'none', borderRadius: '0.5rem', color: '#F3F4F6' }}
+                                itemStyle={{ color: '#F3F4F6' }}
+                                formatter={(value: number) => [`$${value.toFixed(2)}`, 'Sales']}
+                            />
+                            <Bar dataKey="total" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
 
-            {/* Sales Table */}
-            <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-md">
-                <h3 className="text-xl font-bold mb-4">Sales Details</h3>
+            {/* Transactions Table */}
+            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-md overflow-hidden">
+                <div className="p-6 border-b dark:border-neutral-700">
+                    <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Recent Transactions</h3>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-neutral-500 dark:text-neutral-400">
-                        <thead className="text-xs text-neutral-700 dark:text-neutral-300 uppercase bg-neutral-50 dark:bg-neutral-700">
+                        <thead className="text-xs text-neutral-700 dark:text-neutral-300 uppercase bg-neutral-50 dark:bg-neutral-700/50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Sale ID</th>
-                                <th scope="col" className="px-6 py-3">Date</th>
-                                <th scope="col" className="px-6 py-3">Customer</th>
-                                <th scope="col" className="px-6 py-3">Cashier</th>
-                                <th scope="col" className="px-6 py-3">Payment</th>
-                                <th scope="col" className="px-6 py-3 text-right">Total</th>
-                                <th scope="col" className="px-6 py-3 text-right">Paid</th>
-                                <th scope="col" className="px-6 py-3 text-right">Due</th>
+                                <th className="px-6 py-3">Date</th>
+                                <th className="px-6 py-3">Sale ID</th>
+                                <th className="px-6 py-3">Customer</th>
+                                <th className="px-6 py-3">Cashier</th>
+                                <th className="px-6 py-3 text-right">Total</th>
+                                <th className="px-6 py-3">Method</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {filteredSales.map(sale => {
-                                const due = sale.total - sale.amountPaid;
-                                return (
-                                <tr key={sale.id} className="bg-white dark:bg-neutral-800 border-b dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
-                                    <td className="px-6 py-4 font-medium text-neutral-900 dark:text-white">{sale.id}</td>
-                                    <td className="px-6 py-4">{formatDate(sale.date)}</td>
-                                    <td className="px-6 py-4">{sale.customerName}</td>
+                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-700">
+                            {filteredSales.length > 0 ? filteredSales.map(sale => (
+                                <tr key={sale.id} className="bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700/50">
+                                    <td className="px-6 py-4">{formatDate(sale.date)} <span className="text-xs text-neutral-400 ml-1">{new Date(sale.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
+                                    <td className="px-6 py-4 font-mono text-xs">{sale.id}</td>
+                                    <td className="px-6 py-4 font-medium text-neutral-900 dark:text-neutral-100">{sale.customerName}</td>
                                     <td className="px-6 py-4">{sale.cashier}</td>
+                                    <td className="px-6 py-4 text-right font-semibold text-neutral-900 dark:text-neutral-100">{formatCurrency(sale.total)}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                                            sale.paymentMethod === 'Cash' ? 'bg-green-100 text-green-700' :
-                                            sale.paymentMethod === 'Card' ? 'bg-blue-100 text-blue-700' :
-                                            sale.paymentMethod === 'Credit' ? 'bg-red-100 text-red-700' :
-                                            'bg-yellow-100 text-yellow-700'
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                            sale.paymentMethod === 'Cash' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                            sale.paymentMethod === 'Card' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
                                         }`}>
                                             {sale.paymentMethod}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-semibold">${sale.total.toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-right text-green-600">${sale.amountPaid.toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-right text-red-600">${due.toFixed(2)}</td>
                                 </tr>
-                            )})}
+                            )) : (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-8 text-center text-neutral-500 dark:text-neutral-400">
+                                        No transactions found matching current filters.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
-                    {filteredSales.length === 0 && (
-                        <div className="text-center py-10 text-neutral-500 dark:text-neutral-400">
-                            No sales data found for the selected filters.
-                        </div>
-                    )}
                 </div>
             </div>
         </div>

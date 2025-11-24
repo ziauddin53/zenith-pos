@@ -16,7 +16,6 @@ export interface User {
   avatarUrl: string;
   dashboardWidgets: Record<string, boolean>;
   organizationId?: string;
-  password?: string; // New field for login
 }
 
 export interface Product {
@@ -160,6 +159,16 @@ export interface MasterLicense {
   key: string;
   organizationId: string;
   validUntil: string; // ISO Date
-  planType: 'Trial' | 'Standard' | 'Premium' | 'Enterprise';
+  planType: 'Standard' | 'Premium' | 'Enterprise';
   status: 'Active' | 'Revoked' | 'Expired';
+}
+
+// --- NEW TYPES FOR MULTI-LANGUAGE & CURRENCY ---
+export type Language = 'en' | 'bn';
+export type Currency = 'USD' | 'BDT' | 'EUR' | 'INR';
+
+export interface SystemSettings {
+  language: Language;
+  currency: Currency;
+  taxRate: number;
 }

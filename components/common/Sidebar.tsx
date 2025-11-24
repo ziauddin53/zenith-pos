@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Role, NavItem } from '../../types';
 import { NAV_ITEMS } from '../../constants';
@@ -10,6 +11,7 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   businessName: string;
   businessLogo: string | null;
+  t: (key: string) => string;
 }
 
 const XMarkIcon: React.FC<{ className?: string }> = (props) => (
@@ -24,7 +26,7 @@ const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
     </svg>
 );
 
-export const Sidebar: React.FC<SidebarProps> = ({ userRole, activeView, setActiveView, isOpen, setIsOpen, businessName, businessLogo }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ userRole, activeView, setActiveView, isOpen, setIsOpen, businessName, businessLogo, t }) => {
   const filteredNavItems = NAV_ITEMS.filter(item => item.roles.includes(userRole));
 
   const navContent = (
@@ -45,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ userRole, activeView, setActiv
           }`}
         >
           <item.icon className="w-5 h-5 mr-3" />
-          <span>{item.name}</span>
+          <span>{t(item.name)}</span>
         </a>
       ))}
     </nav>

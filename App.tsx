@@ -9,10 +9,9 @@ import Reports from './components/Reports';
 import GenericView from './components/GenericView';
 import Settings from './components/Settings';
 import { LicenseGate } from './components/LicenseGate';
-import { Login } from './components/Login';
-import { SignUp } from './components/SignUp';
-import { Role, User, Product, Customer, Sale, LicenseKey, Notification, Supplier, PurchaseOrder, Shift, HeldCart, Expense, MasterLicense, CartItem } from './types';
-import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, MOCK_MASTER_LICENSES, WIDGETS_CONFIG } from './constants';
+import VirtualKeyboard from './components/VirtualKeyboard';
+import { Role, User, Product, Customer, Sale, LicenseKey, Notification, Supplier, PurchaseOrder, Shift, HeldCart, Expense, MasterLicense, Language, Currency } from './types';
+import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, TRANSLATIONS, CURRENCIES, TRIAL_DURATION_DAYS } from './constants';
 
 // Helper to load data from LocalStorage or fall back to Mocks
 function loadFromStorage<T>(key: string, fallback: T[]): T[] {
@@ -24,9 +23,7 @@ function App() {
   // License State
   const [activeLicense, setActiveLicense] = useState<MasterLicense | null>(null);
   const [isLoadingLicense, setIsLoadingLicense] = useState(true);
-  
-  // Auth UI State
-  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [isInTrial, setIsInTrial] = useState(false);
 
   // --- 1. GLOBAL PERSISTENT STATE (Loads from Browser Storage) ---
   const [allEmployees, setAllEmployees] = useState<User[]>(() => loadFromStorage('zenith_users', MOCK_USERS));
@@ -38,21 +35,22 @@ function App() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>(() => loadFromStorage('zenith_expenses', MOCK_EXPENSES));
   const [allLicenseKeys, setAllLicenseKeys] = useState<LicenseKey[]>(() => loadFromStorage('zenith_licenses', MOCK_LICENSE_KEYS));
   
-  // Dynamic Master Licenses (so newly registered orgs can login)
-  const [allMasterLicenses, setAllMasterLicenses] = useState<MasterLicense[]>(() => loadFromStorage('zenith_master_db', MOCK_MASTER_LICENSES));
-  
   const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const [activeShift, setActiveShift] = useState<Shift | null>(null);
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([]);
 
   // App UI State
-  const [currentUser, setCurrentUser] = useState<User | null>(null); 
+  const [currentUser, setCurrentUser] = useState<User>(allEmployees[0]); 
   const [activeView, setActiveView] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [businessName, setBusinessName] = useState('Zenith POS');
   const [businessLogo, setBusinessLogo] = useState<string | null>(null);
   
+  // Language & Currency State
+  const [language, setLanguage] = useState<Language>('en');
+  const [currency, setCurrency] = useState<Currency>('USD');
+
   // Network State
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
@@ -65,7 +63,6 @@ function App() {
   useEffect(() => localStorage.setItem('zenith_sales', JSON.stringify(allSales)), [allSales]);
   useEffect(() => localStorage.setItem('zenith_expenses', JSON.stringify(allExpenses)), [allExpenses]);
   useEffect(() => localStorage.setItem('zenith_licenses', JSON.stringify(allLicenseKeys)), [allLicenseKeys]);
-  useEffect(() => localStorage.setItem('zenith_master_db', JSON.stringify(allMasterLicenses)), [allMasterLicenses]);
 
   // --- 3. NETWORK & SYNC LISTENERS ---
   useEffect(() => {
@@ -91,103 +88,113 @@ function App() {
   // --- 4. LICENSE CHECK ---
   useEffect(() => {
     const storedLicense = localStorage.getItem('zenith_master_license');
+    const trialStart = localStorage.getItem('zenith_trial_start');
+
+    // Check License First
     if (storedLicense) {
       try {
         const parsedLicense = JSON.parse(storedLicense) as MasterLicense;
         if (new Date(parsedLicense.validUntil) > new Date()) {
            setActiveLicense(parsedLicense);
+           const orgAdmin = allEmployees.find(u => u.organizationId === parsedLicense.organizationId && u.role === Role.Admin);
+           if (orgAdmin) setCurrentUser(orgAdmin);
+           setIsLoadingLicense(false);
+           return;
         } else {
            localStorage.removeItem('zenith_master_license');
         }
       } catch (e) {
-        console.error("Failed to parse license", e);
         localStorage.removeItem('zenith_master_license');
       }
     }
+
+    // Check Trial Second
+    if (trialStart) {
+        const startDate = new Date(trialStart);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+        if (diffDays <= TRIAL_DURATION_DAYS) {
+            setIsInTrial(true);
+            // For trial, we use a default or existing user context
+            // In a real app, we might create a temp trial user
+            setActiveLicense({ 
+                key: 'TRIAL_MODE', 
+                organizationId: 'org_coffee', // Default to coffee org for trial
+                validUntil: new Date(now.getTime() + (TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)).toISOString(),
+                planType: 'Standard',
+                status: 'Active'
+            });
+             // Ensure a user exists for trial org if needed, or just use existing
+             if(!currentUser) setCurrentUser(MOCK_USERS[0]);
+        } else {
+            localStorage.removeItem('zenith_trial_start'); // Trial Expired
+        }
+    }
+
     setIsLoadingLicense(false);
   }, []);
 
   const handleLicenseActivation = (license: MasterLicense) => {
     localStorage.setItem('zenith_master_license', JSON.stringify(license));
+    localStorage.removeItem('zenith_trial_start'); // Clear trial if license added
     setActiveLicense(license);
-    setIsSigningUp(false);
+    setIsInTrial(false);
+    setActiveView('dashboard');
+    
+    const orgAdmin = allEmployees.find(u => u.organizationId === license.organizationId && u.role === Role.Admin);
+    if (orgAdmin) {
+      setCurrentUser(orgAdmin);
+    }
+  };
+
+  const handleStartTrial = () => {
+      const now = new Date().toISOString();
+      localStorage.setItem('zenith_trial_start', now);
+      setIsInTrial(true);
+      
+      // Create a dummy license object for state
+      const trialLicense: MasterLicense = {
+          key: 'TRIAL',
+          organizationId: 'org_coffee', // Default demo org
+          validUntil: new Date(Date.now() + (7 * 86400000)).toISOString(),
+          planType: 'Standard',
+          status: 'Active'
+      };
+      setActiveLicense(trialLicense);
+      // Set user to demo admin
+      const demoUser = MOCK_USERS.find(u => u.role === Role.Admin && u.organizationId === 'org_coffee');
+      if(demoUser) setCurrentUser(demoUser);
   };
 
   const handleDeactivateLicense = () => {
     localStorage.removeItem('zenith_master_license');
+    localStorage.removeItem('zenith_trial_start');
     setActiveLicense(null);
-    setCurrentUser(null);
-    setIsSigningUp(false);
+    setIsInTrial(false);
   }
 
-  // --- 5. SIGN UP LOGIC ---
-  const handleSignUp = (orgName: string, adminName: string, email: string, password: string) => {
-      const newOrgId = `org_${Date.now()}`;
-      
-      // 1. Create Admin User
-      const getDefaultWidgetsForRole = (role: Role): Record<string, boolean> => {
-        const widgets: Record<string, boolean> = {};
-        WIDGETS_CONFIG.forEach(widget => {
-            widgets[widget.id] = widget.roles.includes(role);
-        });
-        return widgets;
-      };
+  // --- 5. DERIVED STATE (Multi-Tenancy Filtering) ---
+  const currentOrgId = currentUser.organizationId;
 
-      const newAdmin: User = {
-          id: `u${Date.now()}`,
-          name: adminName,
-          email: email,
-          password: password,
-          role: Role.Admin,
-          organizationId: newOrgId,
-          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(adminName)}&background=random`,
-          dashboardWidgets: getDefaultWidgetsForRole(Role.Admin)
-      };
-      setAllEmployees(prev => [...prev, newAdmin]);
-
-      // 2. Create 7-Day Trial License
-      const trialKey = `ZENITH-TRIAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      const trialLicense: MasterLicense = {
-          key: trialKey,
-          organizationId: newOrgId,
-          validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 Days from now
-          planType: 'Trial',
-          status: 'Active'
-      };
-      setAllMasterLicenses(prev => [...prev, trialLicense]);
-
-      // 3. Auto Activate
-      handleLicenseActivation(trialLicense);
-      
-      // 4. Auto Login
-      setCurrentUser(newAdmin);
-      setBusinessName(orgName);
-      setActiveView('dashboard');
-  };
-
-  // --- 6. DERIVED STATE (Multi-Tenancy Filtering) ---
-  
-  const currentOrgId = currentUser?.organizationId;
-
-  // Memoized filtered lists - only valid when currentUser is set
-  const employees = useMemo(() => currentUser ? allEmployees.filter(u => u.organizationId === currentOrgId) : [], [allEmployees, currentOrgId]);
-  const products = useMemo(() => currentUser ? allProducts.filter(p => p.organizationId === currentOrgId) : [], [allProducts, currentOrgId]);
-  const customers = useMemo(() => currentUser ? allCustomers.filter(c => c.organizationId === currentOrgId) : [], [allCustomers, currentOrgId]);
-  const suppliers = useMemo(() => currentUser ? allSuppliers.filter(s => s.organizationId === currentOrgId) : [], [allSuppliers, currentOrgId]);
-  const purchaseOrders = useMemo(() => currentUser ? allPurchaseOrders.filter(p => p.organizationId === currentOrgId) : [], [allPurchaseOrders, currentOrgId]);
-  const sales = useMemo(() => currentUser ? allSales.filter(s => s.organizationId === currentOrgId) : [], [allSales, currentOrgId]);
-  const expenses = useMemo(() => currentUser ? allExpenses.filter(e => e.organizationId === currentOrgId) : [], [allExpenses, currentOrgId]);
-  const licenseKeys = useMemo(() => currentUser ? allLicenseKeys.filter(l => l.organizationId === currentOrgId) : [], [allLicenseKeys, currentOrgId]);
+  const employees = useMemo(() => allEmployees.filter(u => u.organizationId === currentOrgId), [allEmployees, currentOrgId]);
+  const products = useMemo(() => allProducts.filter(p => p.organizationId === currentOrgId), [allProducts, currentOrgId]);
+  const customers = useMemo(() => allCustomers.filter(c => c.organizationId === currentOrgId), [allCustomers, currentOrgId]);
+  const suppliers = useMemo(() => allSuppliers.filter(s => s.organizationId === currentOrgId), [allSuppliers, currentOrgId]);
+  const purchaseOrders = useMemo(() => allPurchaseOrders.filter(p => p.organizationId === currentOrgId), [allPurchaseOrders, currentOrgId]);
+  const sales = useMemo(() => allSales.filter(s => s.organizationId === currentOrgId), [allSales, currentOrgId]);
+  const expenses = useMemo(() => allExpenses.filter(e => e.organizationId === currentOrgId), [allExpenses, currentOrgId]);
+  const licenseKeys = useMemo(() => allLicenseKeys.filter(l => l.organizationId === currentOrgId), [allLicenseKeys, currentOrgId]);
 
   // Update business name based on org
   useEffect(() => {
     if (currentOrgId === 'org_coffee') setBusinessName('Zenith Coffee');
     else if (currentOrgId === 'org_tech') setBusinessName('Tech Zone');
-    // For newly registered orgs, businessName is set during signup, but on refresh we might lose it if not stored in Org table (which we simulate via user)
-    // In a real app, we'd fetch Organization details. Here we persist active name in state.
+    else setBusinessName('Zenith POS');
   }, [currentOrgId]);
 
-  // --- 7. THEME ---
+  // --- 6. THEME ---
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -196,45 +203,38 @@ function App() {
     }
   }, [isDarkMode]);
 
+  // --- 7. HELPERS ---
+  const t = React.useCallback((key: string): string => {
+      return TRANSLATIONS[language]?.[key] || key;
+  }, [language]);
+
+  const formatCurrency = React.useCallback((amount: number): string => {
+      const config = CURRENCIES[currency];
+      if (!config) return `$${amount.toFixed(2)}`;
+      return `${config.symbol}${(amount * config.rate).toFixed(2)}`;
+  }, [currency]);
+
   // --- 8. HANDLERS & SYNC ---
 
-  const handleLogin = async (email: string, password: string): Promise<string | null> => {
-    const user = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (!user) {
-      return "User not found.";
-    }
-
-    if (activeLicense && user.organizationId !== activeLicense.organizationId) {
-      return "User does not belong to this organization.";
-    }
-
-    const validPassword = user.password || '123456';
-    if (password !== validPassword) {
-      return "Invalid password.";
-    }
-
-    setCurrentUser(user);
-    const defaultViewForRole = user.role === Role.Cashier ? 'pos' : 'dashboard';
-    setActiveView(defaultViewForRole);
-    return null;
-  };
-
   const handleLogout = () => {
-    setCurrentUser(null);
-    setActiveShift(null); 
+    const currentOrgUsers = employees;
+    const currentIndex = currentOrgUsers.findIndex(u => u.id === currentUser.id);
+    const nextUser = currentOrgUsers[(currentIndex + 1) % currentOrgUsers.length];
+    setCurrentUser(nextUser);
+    
+    const defaultViewForRole = nextUser.role === Role.Cashier ? 'pos' : 'dashboard';
+    setActiveView(defaultViewForRole);
   }
   
   const handleWidgetChange = (widgetId: string, isVisible: boolean) => {
-    if (!currentUser) return;
     const newWidgets = { ...currentUser.dashboardWidgets, [widgetId]: isVisible };
     const updatedUser = { ...currentUser, dashboardWidgets: newWidgets };
     setCurrentUser(updatedUser);
+    // Update in master list
     setAllEmployees(prev => prev.map(emp => emp.id === currentUser.id ? updatedUser : emp));
   };
 
-  const handleAddSale = (saleData: Omit<Sale, 'id' | 'cashier' | 'cashierId' | 'date'>, cartItems: CartItem[]) => {
-    if (!currentUser) return;
+  const handleAddSale = (saleData: Omit<Sale, 'id' | 'cashier' | 'cashierId' | 'date'>) => {
     const dueAmount = saleData.total - saleData.amountPaid;
     const newSale: Sale = {
         ...saleData,
@@ -246,14 +246,6 @@ function App() {
     };
     
     setAllSales(prev => [newSale, ...prev]);
-
-    setAllProducts(prevProducts => prevProducts.map(product => {
-        const soldItem = cartItems.find(item => item.id === product.id);
-        if (soldItem) {
-            return { ...product, stock: Math.max(0, product.stock - soldItem.quantity) };
-        }
-        return product;
-    }));
 
     if (!isOnline) {
         console.log('Offline: Sale saved locally.');
@@ -284,8 +276,13 @@ function App() {
       return newCustomer;
   };
 
+  const handleStockAdjustment = (productId: string, newStock: number, reason: string) => {
+      setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: newStock } : p));
+      // Log activity (simplified)
+      console.log(`Stock adjusted for ${productId}: ${newStock} (${reason})`);
+  };
+
   const handleToggleShift = () => {
-    if (!currentUser) return;
     if (activeShift) {
         const endedShift = { ...activeShift, endTime: new Date().toISOString() };
         setActiveShift(null);
@@ -304,13 +301,28 @@ function App() {
   };
 
   const renderContent = () => {
-    if (!currentUser) return null;
-
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard products={products} user={currentUser} onWidgetChange={handleWidgetChange} />;
+        return <Dashboard 
+                  products={products} 
+                  user={currentUser}
+                  onWidgetChange={handleWidgetChange}
+                  formatCurrency={formatCurrency}
+                  t={t} 
+                />;
       case 'pos':
-        return <POS user={currentUser} customers={customers} products={products} onAddSale={handleAddSale} onAddCustomer={handleAddCustomer} heldCarts={heldCarts} setHeldCarts={setHeldCarts} />;
+        return <POS 
+                  user={currentUser}
+                  customers={customers}
+                  products={products}
+                  onAddSale={handleAddSale}
+                  onAddCustomer={handleAddCustomer}
+                  heldCarts={heldCarts}
+                  setHeldCarts={setHeldCarts}
+                  formatCurrency={formatCurrency}
+                  t={t}
+                  businessName={businessName}
+               />;
       case 'products':
         return (
           <React.Fragment key="products">
@@ -322,6 +334,9 @@ function App() {
                 onAdd={(item) => setAllProducts(prev => [...prev, { ...item, id: `p${Date.now()}`, organizationId: currentOrgId } as Product])}
                 onUpdate={(item) => setAllProducts(prev => prev.map(p => p.id === item.id ? item : p))}
                 onDelete={(ids) => setAllProducts(prev => prev.filter(p => !ids.includes(p.id)))}
+                customActions={{ onAdjustStock: handleStockAdjustment }}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
@@ -335,7 +350,15 @@ function App() {
                 formFields={MANAGEMENT_CONFIG.purchases.formFields.map(f => f.key === 'supplierId' ? { ...f, options: suppliers.map(s => ({ value: s.id, label: s.name })) } : f )}
                 onAdd={(item) => {
                     const supplier = suppliers.find(s => s.id === (item as any).supplierId);
-                    const newPO: PurchaseOrder = { ...item, id: `po${Date.now()}`, supplierName: supplier?.name || 'N/A', createdAt: new Date().toISOString(), createdBy: currentUser.name, items: [], organizationId: currentOrgId } as PurchaseOrder;
+                    const newPO: PurchaseOrder = {
+                        ...item,
+                        id: `po${Date.now()}`,
+                        supplierName: supplier?.name || 'N/A',
+                        createdAt: new Date().toISOString(),
+                        createdBy: currentUser.name,
+                        items: [], 
+                        organizationId: currentOrgId
+                    } as PurchaseOrder;
                     setAllPurchaseOrders(prev => [newPO, ...prev]);
                 }}
                 onUpdate={(item) => {
@@ -344,6 +367,8 @@ function App() {
                     setAllPurchaseOrders(prev => prev.map(p => p.id === item.id ? updatedPO : p));
                 }}
                 onDelete={(ids) => setAllPurchaseOrders(prev => prev.filter(p => !ids.includes(p.id)))}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
@@ -358,6 +383,8 @@ function App() {
                 onAdd={(item) => setAllSuppliers(prev => [...prev, { ...item, id: `sup${Date.now()}`, organizationId: currentOrgId } as Supplier])}
                 onUpdate={(item) => setAllSuppliers(prev => prev.map(s => s.id === item.id ? item : s))}
                 onDelete={(ids) => setAllSuppliers(prev => prev.filter(s => !ids.includes(s.id)))}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
@@ -373,6 +400,8 @@ function App() {
                 onUpdate={(item) => setAllCustomers(prev => prev.map(c => c.id === item.id ? item : c))}
                 onDelete={(ids) => setAllCustomers(prev => prev.filter(c => !ids.includes(c.id)))}
                 customActions={{ onRecordPayment: handleRecordPayment }}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
@@ -385,11 +414,18 @@ function App() {
                 columns={MANAGEMENT_CONFIG.employees.columns}
                 formFields={MANAGEMENT_CONFIG.employees.formFields}
                 onAdd={(item) => {
-                    const newEmployee: User = { ...item, id: `u${Date.now()}`, avatarUrl: (item as Partial<User>).avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`, organizationId: currentOrgId, password: (item as any).password || '123456' } as User;
+                    const newEmployee: User = {
+                        ...item,
+                        id: `u${Date.now()}`,
+                        avatarUrl: (item as Partial<User>).avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`,
+                        organizationId: currentOrgId
+                    } as User;
                     setAllEmployees(prev => [...prev, newEmployee]);
                 }}
                 onUpdate={(item) => setAllEmployees(prev => prev.map(e => e.id === item.id ? item : e))}
                 onDelete={(ids) => setAllEmployees(prev => prev.filter(e => !ids.includes(e.id)))}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
@@ -402,16 +438,23 @@ function App() {
                 columns={MANAGEMENT_CONFIG.expenses.columns}
                 formFields={MANAGEMENT_CONFIG.expenses.formFields}
                 onAdd={(item) => {
-                    const newExpense: Expense = { ...item, id: `e${Date.now()}`, recordedBy: currentUser.name, organizationId: currentOrgId } as Expense;
+                    const newExpense: Expense = {
+                        ...item,
+                        id: `e${Date.now()}`,
+                        recordedBy: currentUser.name,
+                        organizationId: currentOrgId
+                    } as Expense;
                     setAllExpenses(prev => [newExpense, ...prev]);
                 }}
                 onUpdate={(item) => setAllExpenses(prev => prev.map(e => e.id === item.id ? item : e))}
                 onDelete={(ids) => setAllExpenses(prev => prev.filter(e => !ids.includes(e.id)))}
+                t={t}
+                formatCurrency={formatCurrency}
             />
           </React.Fragment>
         );
       case 'reports':
-        return <Reports sales={sales} users={employees} customers={customers} />;
+        return <Reports sales={sales} users={employees} customers={customers} formatCurrency={formatCurrency} />;
       case 'settings':
         return <Settings 
             user={currentUser} 
@@ -438,45 +481,61 @@ function App() {
                      });
                 }
             }}
+            language={language}
+            setLanguage={setLanguage}
+            currency={currency}
+            setCurrency={setCurrency}
+            t={t}
         />;
       default:
-        return <Dashboard products={products} user={currentUser} onWidgetChange={handleWidgetChange} />;
+        return <Dashboard 
+                  products={products} 
+                  user={currentUser}
+                  onWidgetChange={handleWidgetChange}
+                  formatCurrency={formatCurrency}
+                  t={t} 
+                />;
     }
   };
 
   if (isLoadingLicense) return null;
 
-  // 1. Handle Sign Up Flow
-  if (isSigningUp) {
-      return <SignUp onSignUp={handleSignUp} onSwitchToLogin={() => setIsSigningUp(false)} />;
-  }
-
-  // 2. If no Master License is active, show License Gate
   if (!activeLicense) {
-    return <LicenseGate onSuccess={handleLicenseActivation} masterLicenses={allMasterLicenses} onSwitchToSignUp={() => setIsSigningUp(true)} />;
+    return <LicenseGate onSuccess={handleLicenseActivation} onStartTrial={handleStartTrial} />;
   }
 
-  // 3. If License is active but no User is logged in, show Login Screen
-  if (!currentUser) {
-    return <Login onLogin={handleLogin} onSwitchToSignUp={() => { handleDeactivateLicense(); setIsSigningUp(true); }} />;
-  }
-
-  // 4. Authenticated App
   return (
     <div className="flex h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 font-sans">
-      <Sidebar userRole={currentUser.role} activeView={activeView} setActiveView={setActiveView} isOpen={isSidebarOpen} setIsOpen={setSidebarOpen} businessName={businessName} businessLogo={businessLogo} />
+      <Sidebar 
+        userRole={currentUser.role} 
+        activeView={activeView}
+        setActiveView={setActiveView}
+        isOpen={isSidebarOpen}
+        setIsOpen={setSidebarOpen}
+        businessName={businessName}
+        businessLogo={businessLogo}
+        t={t}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-          user={currentUser} onLogout={handleLogout} toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
-          isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-          businessName={businessName} businessLogo={businessLogo}
-          activeView={activeView} setActiveView={setActiveView}
-          notifications={notifications} setNotifications={setNotifications}
-          activeShift={activeShift} onToggleShift={handleToggleShift}
+          user={currentUser} 
+          onLogout={handleLogout} 
+          toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+          businessName={businessName}
+          businessLogo={businessLogo}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          notifications={notifications}
+          setNotifications={setNotifications}
+          activeShift={activeShift}
+          onToggleShift={handleToggleShift}
           isOnline={isOnline}
+          t={t}
+          isInTrial={isInTrial}
         />
         
-        {/* Dev Only: Reset Button */}
         <button 
             onClick={handleDeactivateLicense} 
             className="fixed bottom-4 left-4 z-50 text-xs bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-2 py-1 rounded opacity-50 hover:opacity-100 transition-all"
@@ -488,6 +547,7 @@ function App() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">
           {renderContent()}
         </main>
+        <VirtualKeyboard />
       </div>
     </div>
   );

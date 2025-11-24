@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { ManagementColumn, ManagementFormField, ICONS } from '../constants';
-import { Customer, ManagementDataType } from '../types';
+import { Customer, ManagementDataType, Product } from '../types';
 
 // Icons
 const SearchIcon: React.FC<{ className?: string }> = (props) => (
@@ -15,7 +16,7 @@ const TrashIcon: React.FC<{ className?: string }> = (props) => (
 const XMarkIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
 );
-const BanknotesIcon = ICONS.BanknotesIcon;
+const { BanknotesIcon, ArrowUpTrayIcon, QrCodeIcon } = ICONS;
 
 
 interface ManagementProps<T> {
@@ -28,7 +29,10 @@ interface ManagementProps<T> {
     onDelete: (ids: string[]) => void;
     customActions?: {
         onRecordPayment?: (customerId: string, amount: number) => void;
-    }
+        onAdjustStock?: (productId: string, newStock: number, reason: string) => void;
+    };
+    t: (key: string) => string;
+    formatCurrency: (val: number) => string;
 }
 
 // Modal component defined outside to prevent re-creation on re-renders, fixing the input focus bug.
@@ -44,18 +48,77 @@ const Modal: React.FC<{ children: React.ReactNode, title: string, onClose: () =>
     </div>
 );
 
+// --- LABEL PRINTING MODAL ---
+const LabelPrintModal: React.FC<{ items: Product[], onClose: () => void }> = ({ items, onClose }) => {
+    const handlePrint = () => {
+        const printContent = document.getElementById('label-sheet');
+        const windowUrl = 'about:blank';
+        const uniqueName = new Date();
+        const windowName = 'Print' + uniqueName.getTime();
+        const printWindow = window.open(windowUrl, windowName, 'width=800,height=600');
+        
+        if (printWindow && printContent) {
+             printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Print Labels</title>
+                        <style>
+                            body { font-family: sans-serif; padding: 20px; }
+                            .label-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+                            .label { border: 1px dashed #ccc; padding: 10px; text-align: center; border-radius: 5px; }
+                            .sku { font-family: monospace; letter-spacing: 2px; font-weight: bold; margin-top: 5px; display: block;}
+                            @media print {
+                                body { padding: 0; }
+                                .label { break-inside: avoid; }
+                            }
+                        </style>
+                    </head>
+                    <body>${printContent.innerHTML}</body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        }
+    };
 
-export const Management = <T extends { id: string, [key: string]: any }>({ dataType, data, columns, formFields, onAdd, onUpdate, onDelete, customActions }: ManagementProps<T>) => {
+    return (
+        <Modal title="Print Barcode Labels" onClose={onClose}>
+             <div className="p-6">
+                <p className="mb-4 text-sm text-neutral-500">Preview of labels for {items.length} selected items.</p>
+                <div id="label-sheet" className="max-h-60 overflow-y-auto bg-neutral-100 p-4 rounded border mb-4">
+                    <div className="grid grid-cols-2 gap-2">
+                         {items.map(item => (
+                             <div key={item.id} className="bg-white p-2 text-center border border-neutral-300 rounded text-xs">
+                                 <div className="font-bold truncate">{item.name}</div>
+                                 <div>${item.price}</div>
+                                 <div className="font-mono font-bold mt-1 tracking-widest text-sm">{item.sku}</div>
+                             </div>
+                         ))}
+                    </div>
+                </div>
+                <button onClick={handlePrint} className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700">Print Now</button>
+             </div>
+        </Modal>
+    );
+}
+
+
+export const Management = <T extends { id: string, [key: string]: any }>({ dataType, data, columns, formFields, onAdd, onUpdate, onDelete, customActions, t, formatCurrency }: ManagementProps<T>) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+    
     const [currentItem, setCurrentItem] = useState<T | null>(null);
     const [formData, setFormData] = useState<Partial<T>>({});
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [paymentAmount, setPaymentAmount] = useState('');
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    const title = `Manage ${dataType.charAt(0).toUpperCase() + dataType.slice(1)}`;
+    const title = t(`Manage ${dataType.charAt(0).toUpperCase() + dataType.slice(1)}`);
 
     const filteredData = useMemo(() => 
         data.filter(item => 
@@ -158,6 +221,55 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
         closePaymentModal();
     };
 
+    // --- BULK IMPORT LOGIC ---
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csv = event.target?.result as string;
+            const lines = csv.split('\n');
+            // Assume header is line 0: Name,Price,Stock,Category,SKU
+            // Start from line 1
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const cols = line.split(',');
+                if (cols.length >= 5) {
+                    // Mapping based on assumption
+                    // For a real app, we'd use a CSV parser library
+                    const newItem: any = {
+                        name: cols[0],
+                        price: parseFloat(cols[1]) || 0,
+                        stock: parseInt(cols[2]) || 0,
+                        category: cols[3],
+                        sku: cols[4],
+                        // defaults
+                        imageUrl: '',
+                        brand: '',
+                    };
+                    onAdd(newItem);
+                }
+            }
+            alert(`Import process completed for ${lines.length - 1} rows.`);
+        };
+        reader.readAsText(file);
+        // Reset
+        e.target.value = '';
+    };
+
+    // --- LABEL PRINTING ---
+    const handleLabelPrintClick = () => {
+        setIsLabelModalOpen(true);
+    };
+
+
     return (
         <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-md">
             <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
@@ -165,19 +277,38 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                 <div className="w-full sm:w-auto flex items-center gap-2">
                     <div className="relative flex-grow">
                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                        <input type="text" placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
+                        <input type="text" placeholder={t('Search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
                     </div>
-                    <button onClick={() => openModal()} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap">Add New</button>
+                    
+                    {dataType === 'products' && (
+                        <>
+                            <button onClick={handleImportClick} className="bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors flex items-center gap-1">
+                                <ArrowUpTrayIcon className="w-5 h-5" />
+                                <span className="hidden sm:inline">{t('Import CSV')}</span>
+                            </button>
+                            <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
+                        </>
+                    )}
+
+                    <button onClick={() => openModal()} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap">{t('Add New')}</button>
                 </div>
             </div>
 
             {selectedItems.length > 0 && (
                 <div className="mb-4 flex items-center justify-between p-3 bg-primary-50 dark:bg-primary-900/40 rounded-lg">
                     <span className="font-semibold text-primary-700 dark:text-primary-200">{selectedItems.length} item(s) selected</span>
-                    <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors">
-                        <TrashIcon className="w-4 h-4" />
-                        Delete Selected
-                    </button>
+                    <div className="flex gap-2">
+                         {dataType === 'products' && (
+                            <button onClick={handleLabelPrintClick} className="flex items-center gap-2 bg-purple-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors">
+                                <QrCodeIcon className="w-4 h-4" />
+                                {t('Print Labels')}
+                            </button>
+                         )}
+                        <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors">
+                            <TrashIcon className="w-4 h-4" />
+                            Delete Selected
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -292,7 +423,7 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                         <div className="p-3 bg-neutral-100 dark:bg-neutral-700/50 rounded-lg text-center">
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">Current Due Amount</p>
                             {/* Fix: Cast 'currentItem' to 'unknown' then 'Customer' to satisfy TypeScript's generic type constraints. */}
-                            <p className="text-2xl font-bold">${((currentItem as unknown) as Customer).dueAmount.toFixed(2)}</p>
+                            <p className="text-2xl font-bold">{formatCurrency(((currentItem as unknown) as Customer).dueAmount)}</p>
                         </div>
                         <div>
                             <label htmlFor="payment-amount" className="block text-sm font-medium mb-1">Payment Amount</label>
@@ -311,6 +442,10 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                          <button onClick={handleRecordPayment} className="text-white bg-green-600 hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">Record Payment</button>
                     </div>
                 </Modal>
+            )}
+
+            {isLabelModalOpen && (
+                 <LabelPrintModal items={filteredData.filter(i => selectedItems.includes(i.id)) as any[]} onClose={() => setIsLabelModalOpen(false)} />
             )}
         </div>
     );

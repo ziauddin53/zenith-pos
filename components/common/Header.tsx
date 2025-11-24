@@ -18,6 +18,8 @@ interface HeaderProps {
   activeShift: Shift | null;
   onToggleShift: () => void;
   isOnline: boolean;
+  t: (key: string) => string;
+  isInTrial?: boolean;
 }
 
 // Icons
@@ -48,7 +50,7 @@ const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
 );
 const { WifiIcon, CloudIcon } = ICONS;
 
-export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, isDarkMode, toggleDarkMode, businessName, businessLogo, activeView, setActiveView, notifications, setNotifications, activeShift, onToggleShift, isOnline }) => {
+export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, isDarkMode, toggleDarkMode, businessName, businessLogo, activeView, setActiveView, notifications, setNotifications, activeShift, onToggleShift, isOnline, t, isInTrial }) => {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
@@ -79,8 +81,8 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
     }
     const navItem = NAV_ITEMS.find(item => item.path === activeView);
     const viewName = navItem ? navItem.name : activeView.charAt(0).toUpperCase() + activeView.slice(1);
-    return `${viewName}`;
-  }, [activeView, businessName]);
+    return t(viewName);
+  }, [activeView, businessName, t]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -99,8 +101,15 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
 
 
   return (
-    <header className="sticky top-0 z-30 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm shadow-sm">
-      <div className="grid grid-cols-3 items-center h-16 px-4 md:px-6">
+    <header className="sticky top-0 z-30 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm shadow-sm flex flex-col">
+      {isInTrial && (
+          <div className="bg-amber-500 text-white text-xs font-bold text-center py-1 flex justify-center items-center gap-2">
+              <span>⚠️ 7-DAY FREE TRIAL MODE</span>
+              <span className="hidden sm:inline"> - Full features available.</span>
+              <button onClick={() => setActiveView('settings')} className="underline hover:text-amber-100 ml-2">Activate Now</button>
+          </div>
+      )}
+      <div className="grid grid-cols-3 items-center h-16 px-4 md:px-6 w-full">
         {/* Left Side */}
         <div className="flex items-center justify-start gap-4">
             <button onClick={toggleSidebar} className="lg:hidden text-neutral-600 dark:text-neutral-300">
@@ -109,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
              {activeShift && (
                 <div className="hidden sm:flex items-center gap-2 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-xs font-semibold px-3 py-1.5 rounded-full">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>Shift Started: {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span>{t('Shift Started')}: {new Date(activeShift.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
             )}
         </div>
@@ -128,11 +137,11 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
            {/* Connectivity Status */}
            <div className={`hidden md:flex items-center gap-1.5 px-2 py-1 rounded-full border ${isOnline ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-900/20 dark:text-green-400' : 'border-neutral-200 bg-neutral-50 text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'}`}>
                {isOnline ? <WifiIcon className="w-4 h-4" /> : <CloudIcon className="w-4 h-4" />}
-               <span className="text-xs font-semibold">{isOnline ? 'Online' : 'Offline'}</span>
+               <span className="text-xs font-semibold">{isOnline ? t('Online') : t('Offline')}</span>
            </div>
 
            <button onClick={onToggleShift} className={`hidden md:block text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${activeShift ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 hover:bg-red-200' : 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 hover:bg-green-200'}`}>
-              {activeShift ? 'Clock Out' : 'Clock In'}
+              {activeShift ? t('Clock Out') : t('Clock In')}
           </button>
           <button onClick={toggleDarkMode} className="p-2 rounded-full text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             {isDarkMode ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { validateLicenseKey } from '../constants';
 import { MasterLicense } from '../types';
 
 const KeyIcon: React.FC<{ className?: string }> = (props) => (
@@ -16,12 +17,12 @@ const CheckBadgeIcon: React.FC<{ className?: string }> = (props) => (
 
 interface LicenseGateProps {
   onSuccess: (license: MasterLicense) => void;
-  masterLicenses: MasterLicense[];
-  onSwitchToSignUp: () => void;
+  onStartTrial: () => void;
 }
 
-export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicenses, onSwitchToSignUp }) => {
+export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTrial }) => {
   const [inputKey, setInputKey] = useState('');
+  const [businessNameInput, setBusinessNameInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,34 +31,20 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicen
     setError(null);
     setLoading(true);
 
-    // Simulate network delay
+    // Simulate minimal network/processing delay for UX
     setTimeout(() => {
-      const foundLicense = masterLicenses.find(l => l.key === inputKey.trim());
+      const result = validateLicenseKey(inputKey, businessNameInput);
 
-      if (!foundLicense) {
-        setError('Invalid license key. Please check and try again.');
-        setLoading(false);
-        return;
-      }
-
-      if (foundLicense.status !== 'Active') {
-        setError('This license key has been revoked or is inactive.');
-        setLoading(false);
-        return;
-      }
-
-      const now = new Date();
-      const expiry = new Date(foundLicense.validUntil);
-      if (now > expiry) {
-        setError('This license key has expired. Please renew your subscription.');
+      if (!result.valid) {
+        setError(result.error || 'Invalid license key. Please check and try again.');
         setLoading(false);
         return;
       }
 
       // Success!
-      onSuccess(foundLicense);
+      onSuccess(result.license!);
       setLoading(false);
-    }, 800);
+    }, 600);
   };
 
   return (
@@ -75,13 +62,24 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicen
           <div className="mb-6 text-center">
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Enter License Key</h2>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Please enter the product key provided by your software vendor to activate this terminal.
+              Please enter your business details and product key provided by your vendor.
             </p>
           </div>
 
           <form onSubmit={handleActivate} className="space-y-4">
             <div>
-              <label htmlFor="license" className="sr-only">License Key</label>
+              <label htmlFor="businessName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Business Name</label>
+              <input
+                  type="text"
+                  id="businessName"
+                  value={businessNameInput}
+                  onChange={(e) => setBusinessNameInput(e.target.value)}
+                  placeholder="My Store Name"
+                  className="w-full px-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+              />
+            </div>
+            <div>
+              <label htmlFor="license" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">License Key</label>
               <div className="relative">
                 <input
                   type="text"
@@ -89,10 +87,10 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicen
                   value={inputKey}
                   onChange={(e) => setInputKey(e.target.value)}
                   placeholder="ZENITH-XXXX-XXXX-XXXX"
-                  className="w-full pl-4 pr-10 py-3 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-center uppercase tracking-widest outline-none transition-all"
+                  className="w-full pl-4 pr-10 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-center uppercase tracking-widest outline-none transition-all"
                 />
                 {inputKey && !error && (
-                  <div className="absolute right-3 top-3 text-green-500">
+                  <div className="absolute right-3 top-2 text-green-500">
                     <CheckBadgeIcon className="w-6 h-6" />
                   </div>
                 )}
@@ -107,7 +105,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicen
 
             <button
               type="submit"
-              disabled={loading || !inputKey}
+              disabled={loading || !inputKey || !businessNameInput}
               className="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
             >
               {loading ? (
@@ -122,17 +120,16 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, masterLicen
             </button>
           </form>
 
+          <div className="mt-4 text-center">
+              <button onClick={onStartTrial} className="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium">
+                  Start 7-Day Free Trial
+              </button>
+          </div>
+
           <div className="mt-6 pt-6 border-t border-neutral-100 dark:border-neutral-700 text-center">
-            <p className="text-xs text-neutral-400 mb-3">
-              Don't have a key?
+            <p className="text-xs text-neutral-400">
+              For support, contact <span className="font-semibold text-neutral-600 dark:text-neutral-300">support@zenithpos.com</span>
             </p>
-             <button 
-                type="button" 
-                onClick={onSwitchToSignUp}
-                className="text-sm bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
-            >
-                Start 7-Day Free Trial
-            </button>
           </div>
         </div>
       </div>

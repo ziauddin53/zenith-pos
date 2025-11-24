@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
-import { User, Role, LicenseKey } from '../types';
-import { ICONS } from '../constants';
+import { User, Role, LicenseKey, Language, Currency } from '../types';
+import { ICONS, CURRENCIES } from '../constants';
 
 // Icons
 const UserCircleIcon: React.FC<{ className?: string }> = (props) => (
@@ -38,6 +39,7 @@ const BookOpenIcon: React.FC<{ className?: string }> = (props) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
   </svg>
 );
+const GlobeAltIcon = ICONS.GlobeAltIcon;
 
 
 interface SettingsProps {
@@ -51,6 +53,11 @@ interface SettingsProps {
     setBusinessLogo: (logo: string) => void;
     licenseKeys: LicenseKey[];
     setLicenseKeys: React.Dispatch<React.SetStateAction<LicenseKey[]>>;
+    language: Language;
+    setLanguage: (lang: Language) => void;
+    currency: Currency;
+    setCurrency: (curr: Currency) => void;
+    t: (key: string) => string;
 }
 
 const SettingsCard: React.FC<{ title: string, icon: React.ReactNode, children: React.ReactNode }> = ({ title, icon, children }) => (
@@ -110,31 +117,31 @@ const AccordionItem: React.FC<{ title: string; children: React.ReactNode; }> = (
 const FULL_GUIDE_SECTIONS = [
     {
         title: "1. Getting Started",
-        content: "Welcome to Zenith POS. \n\n**Login:** Access the system using your assigned email and password.\n**Roles:**\n- **Admin:** Full access to all settings, users, and data.\n- **Manager:** Manages products, inventory, and reports, but cannot change system settings.\n- **Cashier:** Restricted access focused on the Point of Sale (POS) and Customer handling."
+        content: "Welcome to Zenith POS. \n\n**Login & Roles:**\n- **Admin:** Full access (Settings, Users, Reports).\n- **Manager:** Manages Inventory & Reports.\n- **Cashier:** Access to POS & Customers only.\n\n**Dashboard:** Customize your dashboard widgets by clicking the 'Customize' button on the top right."
     },
     {
-        title: "2. Point of Sale (POS)",
-        content: "The POS module is the heart of your operations.\n\n- **Adding Items:** Click on product cards or use the search bar to find items. Scan barcodes if a scanner is connected.\n- **Cart:** Adjust quantities or remove items directly in the cart view.\n- **Customers:** Select an existing customer to track loyalty points and credit. You can add new customers on the fly.\n- **Holding Orders:** Use the 'Hold' button to temporarily park a transaction (e.g., if a customer forgot their wallet). Resume it later from the 'Held Orders' list.\n- **Payments:** Click 'Charge' to proceed. Select Cash, Card, or Credit. 'Credit' is only available for registered customers."
+        title: "2. Advanced Point of Sale (POS)",
+        content: "Our POS is designed for speed and flexibility.\n\n- **Touchscreen Mode:** Tap any input field (like Search) to open the Virtual Keyboard automatically.\n- **Discounts:** Click the 'Tag Icon' next to any cart item to apply a % or Fixed Amount discount.\n- **Hold Order:** Temporarily save an order if a customer needs time. Resume it later from the 'Held Orders' menu.\n- **Credit Sales:** Select a customer to enable the 'Credit' payment option.\n- **WhatsApp Invoice:** After a sale, click 'WhatsApp Invoice' to send the receipt directly to the customer's phone."
     },
     {
-        title: "3. Product & Inventory Management",
-        content: "Keep your stock organized.\n\n- **Products:** Add, edit, or delete products. Set 'Low Stock Thresholds' to get alerts when items run low.\n- **Suppliers:** Maintain a list of your vendors.\n- **Purchases:** Create Purchase Orders (POs) when restocking. Once a PO is 'Completed', the stock is automatically added to your inventory."
+        title: "3. Inventory & Products",
+        content: "Manage your stock efficiently.\n\n- **Add Products:** Add items manually or use **'Import CSV'** to upload hundreds of products at once.\n- **Label Printing:** Select multiple products in the list and click **'Print Labels'** to generate barcode stickers.\n- **Stock Adjustment:** Use the 'Adjust Stock' button to correct inventory levels for damage or loss."
     },
     {
-        title: "4. Customer & Credit Management",
-        content: "Build relationships and manage debts.\n\n- **Profiles:** Track contact info and purchase history.\n- **Credit/Dues:** You can sell items on credit. Set 'Credit Limits' to prevent over-spending. \n- **Repayment:** When a customer pays off their debt, go to the 'Customers' page and click the green 'Banknote' icon to record the payment."
+        title: "4. Offline Mode",
+        content: "**No Internet? No Problem.**\n\nZenith POS works 100% offline. You can continue selling even when the internet is down. All data is saved locally on your device and will automatically sync once the connection is restored. Look for the 'Cloud' icon in the header to check your status."
     },
     {
-        title: "5. Reports & Analytics",
-        content: "Gain insights into your business.\n\n- **Sales Report:** View daily, weekly, or monthly sales. Filter by cashier or customer.\n- **Export:** Download data as CSV or Excel files for external accounting.\n- **Dashboard:** Use the main dashboard for a quick overview of revenue, top products, and low stock alerts."
+        title: "5. Customers & Loyalty",
+        content: "Build customer loyalty.\n\n- **Points:** Customers earn points for every purchase. You can redeem these points for discounts during checkout.\n- **Credit Limit:** Set a maximum credit limit for each customer to control debt risk.\n- **Due Collection:** Go to the Customer page and click the 'Money' icon to record a due payment."
     },
     {
-        title: "6. Shift Management",
-        content: "Track employee hours.\n\n- **Clock In/Out:** Use the button in the top header to start or end your shift.\n- **Status:** The header displays the current active shift time."
+        title: "6. Localization & Currency",
+        content: "Make the app yours.\n\nGo to **Settings > Localization** to:\n- Change the interface language (English / Bangla).\n- Change the currency symbol (USD, BDT, EUR, INR).\nThe entire app will instantly update to reflect your choices."
     },
     {
-        title: "7. Settings & Administration",
-        content: "Configure the system (Admin only).\n\n- **Business Profile:** Update your store name and logo.\n- **System:** Set default tax rates and manage data backups.\n- **License Keys:** Generate and revoke access keys for different devices."
+        title: "7. Data Security & Backup",
+        content: "Your data is safe.\n\n- **Backup:** In Settings, click 'Backup Data' to download a full copy of your system data as a JSON file.\n- **Restore:** If you change devices or clear your browser, use 'Restore Data' to upload your backup file and resume exactly where you left off."
     }
 ];
 
@@ -168,7 +175,7 @@ const HelpModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     );
 };
 
-const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggleDarkMode, businessName, setBusinessName, businessLogo, setBusinessLogo, licenseKeys, setLicenseKeys }) => {
+const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggleDarkMode, businessName, setBusinessName, businessLogo, setBusinessLogo, licenseKeys, setLicenseKeys, language, setLanguage, currency, setCurrency, t }) => {
     const [taxRate, setTaxRate] = useState(8);
     const [is2faEnabled, setIs2faEnabled] = useState(false);
     const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
@@ -179,6 +186,7 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [modalError, setModalError] = useState<string | null>(null);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
     
      useEffect(() => {
         if (notification) {
@@ -274,11 +282,54 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
         }
         closeRevokeConfirm();
     };
+    
+    // --- BACKUP AND RESTORE ---
+    const handleBackup = () => {
+        const data = {
+            users: localStorage.getItem('zenith_users'),
+            products: localStorage.getItem('zenith_products'),
+            customers: localStorage.getItem('zenith_customers'),
+            sales: localStorage.getItem('zenith_sales'),
+            // ... add other keys
+        };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `zenith_backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        setNotification({ type: 'success', message: 'Backup downloaded successfully!' });
+    };
+    
+    const handleRestoreClick = () => {
+        fileInputRef.current?.click();
+    }
+    
+    const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target?.result as string);
+                if(data.users) localStorage.setItem('zenith_users', data.users);
+                if(data.products) localStorage.setItem('zenith_products', data.products);
+                if(data.customers) localStorage.setItem('zenith_customers', data.customers);
+                if(data.sales) localStorage.setItem('zenith_sales', data.sales);
+                
+                setNotification({ type: 'success', message: 'Data restored! Please reload the page.' });
+                setTimeout(() => window.location.reload(), 2000);
+            } catch(err) {
+                 setNotification({ type: 'error', message: 'Invalid backup file.' });
+            }
+        };
+        reader.readAsText(file);
+    };
 
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">Settings</h1>
+            <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">{t('Settings')}</h1>
             
             {notification && (
                 <NotificationBanner 
@@ -334,6 +385,27 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
                     <button onClick={() => handleSaveChanges('Profile')} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Save Changes</button>
                 </div>
             </SettingsCard>
+            
+            {/* Localization Settings */}
+            <SettingsCard title="Localization" icon={<GlobeAltIcon className="w-6 h-6 text-primary-500" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div>
+                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Language</label>
+                        <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                            <option value="en">English</option>
+                            <option value="bn">বাংলা (Bangla)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Currency</label>
+                        <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none">
+                            {Object.keys(CURRENCIES).map(curr => (
+                                <option key={curr} value={curr}>{curr} ({CURRENCIES[curr as Currency].symbol})</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </SettingsCard>
 
             {/* Business Settings (Admin only) */}
             {user.role === Role.Admin && (
@@ -387,8 +459,9 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">Backup or restore your application data.</p>
                         </div>
                         <div className="flex gap-2 mt-2 md:mt-0">
-                            <button onClick={() => setNotification({ type: 'success', message: 'Data backup initiated!' })} className="bg-secondary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-secondary-700 transition-colors">Backup Data</button>
-                             <button onClick={() => alert('Opening restore dialog...')} className="bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors">Restore Data</button>
+                            <button onClick={handleBackup} className="bg-secondary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-secondary-700 transition-colors">Backup Data</button>
+                             <button onClick={handleRestoreClick} className="bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors">Restore Data</button>
+                             <input type="file" accept=".json" ref={fileInputRef} className="hidden" onChange={handleRestoreFile} />
                         </div>
                     </div>
                 </div>
