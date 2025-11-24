@@ -212,6 +212,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
         'Print Receipt': 'Print Receipt',
         'Payment Success': 'Payment Successful',
         'WhatsApp Invoice': 'WhatsApp Invoice',
+        'Out of Stock': 'Out of Stock',
+        'Stock Limit Exceeded': 'Cannot add more. Stock limit reached.',
     },
     'bn': {
         'Dashboard': 'ড্যাশবোর্ড',
@@ -252,6 +254,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
         'Print Receipt': 'রিসিট প্রিন্ট',
         'Payment Success': 'পেমেন্ট সফল হয়েছে',
         'WhatsApp Invoice': 'হোয়াটসঅ্যাপ ইনভয়েস',
+        'Out of Stock': 'স্টক শেষ',
+        'Stock Limit Exceeded': 'স্টক এর চেয়ে বেশি সিলেক্ট করা যাবে না',
     }
 };
 
@@ -361,19 +365,32 @@ export const validateLicenseKey = (key: string, businessName?: string): { valid:
 
     const [prefix, serial, year, signature] = parts;
     
-    // Reconstruct the signed data. If businessName is provided, include it.
-    // This ensures the key is LOCKED to that specific business name.
-    let dataToSign = `${prefix}-${serial}-${year}`;
+    // We validate the signature in two ways to prevent errors:
+    // 1. Strict Binding: Check signature WITH the business name (for keys that are locked to a specific business).
+    // 2. Generic Binding: Check signature WITHOUT the business name (for general-purpose keys).
+    
+    let isValidSignature = false;
+
+    // Method 1: Check with Business Name
+    let dataToSignStrict = `${prefix}-${serial}-${year}`;
     if (businessName) {
-         // Use a simplified version of name (uppercase, no spaces) for consistent signing
          const cleanName = businessName.trim().toUpperCase().replace(/\s+/g, '');
-         dataToSign += `-${cleanName}`;
+         dataToSignStrict += `-${cleanName}`;
+    }
+    if (generateSignature(dataToSignStrict, LICENSE_VERIFICATION_SECRET) === signature) {
+        isValidSignature = true;
     }
 
-    const expectedSignature = generateSignature(dataToSign, LICENSE_VERIFICATION_SECRET);
+    // Method 2: Check Generic (if strict failed)
+    if (!isValidSignature) {
+        const dataToSignGeneric = `${prefix}-${serial}-${year}`;
+        if (generateSignature(dataToSignGeneric, LICENSE_VERIFICATION_SECRET) === signature) {
+            isValidSignature = true;
+        }
+    }
 
-    if (signature !== expectedSignature) {
-        return { valid: false, error: "Invalid license signature or business name mismatch." };
+    if (!isValidSignature) {
+        return { valid: false, error: "Invalid license signature." };
     }
 
     // Check Expiry

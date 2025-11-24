@@ -138,9 +138,17 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   const total = subtotal - loyaltyDiscount + tax;
 
   const addToCart = (product: Product) => {
+    if (product.stock <= 0) {
+        alert(t('Out of Stock'));
+        return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.stock) {
+            alert(t('Stock Limit Exceeded'));
+            return prev;
+        }
         return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
       return [...prev, { ...product, quantity: 1 }];
@@ -150,7 +158,12 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   const updateQuantity = (productId: string, delta: number) => {
     setCart(prev => prev.map(item => {
       if (item.id === productId) {
-        return { ...item, quantity: Math.max(1, item.quantity + delta) };
+        const newQuantity = item.quantity + delta;
+        if (delta > 0 && newQuantity > item.stock) {
+             alert(t('Stock Limit Exceeded'));
+             return item;
+        }
+        return { ...item, quantity: Math.max(1, newQuantity) };
       }
       return item;
     }));
@@ -329,11 +342,13 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
         
         <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map(product => (
+                {filteredProducts.map(product => {
+                    const isOutOfStock = product.stock <= 0;
+                    return (
                     <div 
                         key={product.id} 
                         onClick={() => addToCart(product)}
-                        className="bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:shadow-md hover:border-primary-300 transition-all flex flex-col items-center text-center group"
+                        className={`bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-all flex flex-col items-center text-center group ${isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:border-primary-300'}`}
                     >
                         <div className="w-20 h-20 mb-3 rounded-md bg-white dark:bg-neutral-600 flex items-center justify-center overflow-hidden">
                             {product.imageUrl ? (
@@ -345,8 +360,9 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                         <h3 className="font-semibold text-sm text-neutral-800 dark:text-neutral-100 line-clamp-2">{product.name}</h3>
                         <p className="text-primary-600 dark:text-primary-400 font-bold mt-1">{formatCurrency(product.price)}</p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{product.stock} in stock</p>
+                        {isOutOfStock && <span className="text-xs font-bold text-red-500 mt-1">{t('Out of Stock')}</span>}
                     </div>
-                ))}
+                )})}
                 {filteredProducts.length === 0 && (
                     <div className="col-span-full text-center py-10 text-neutral-500">
                         No products found.
