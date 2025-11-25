@@ -9,7 +9,7 @@ import Reports from './components/Reports';
 import GenericView from './components/GenericView';
 import Settings from './components/Settings';
 import { LicenseGate } from './components/LicenseGate';
-import { Auth } from './components/Auth';
+import { Auth, AuthView } from './components/Auth';
 import VirtualKeyboard from './components/VirtualKeyboard';
 import { Role, User, Product, Customer, Sale, LicenseKey, Notification, Supplier, PurchaseOrder, Shift, HeldCart, Expense, MasterLicense, Language, Currency } from './types';
 import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, TRANSLATIONS, CURRENCIES, TRIAL_DURATION_DAYS, getDefaultWidgetsForRole } from './constants';
@@ -29,6 +29,16 @@ function App() {
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  
+  // Auth Verification State (Temporary)
+  const [pendingRegistration, setPendingRegistration] = useState<{name: string, email: string, password: string} | null>(null);
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState<string | null>(null);
+  // We need to control the view state of Auth component from here to sync with success events
+  // However, simpler to let Auth component handle its view state based on callbacks
+  // But wait, to switch from Register form to Verify form, Auth needs to know it was successful.
+  // The current Auth implementation handles view switching locally in handleSubmit case by case. 
+  // We will trigger alerts/console logs here for the codes.
 
   // --- 1. GLOBAL PERSISTENT STATE (Loads from Browser Storage) ---
   const [allEmployees, setAllEmployees] = useState<User[]>(() => loadFromStorage('zenith_users', MOCK_USERS));
@@ -153,6 +163,8 @@ function App() {
 
   // --- AUTH LOGIC ---
 
+  const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
   const handleLogin = (email: string, pass: string) => {
       if (!activeLicense) return;
       
@@ -163,6 +175,10 @@ function App() {
       );
 
       if (user) {
+          if (user.isVerified === false) {
+             setAuthError("Email not verified. Please contact support or register again.");
+             return;
+          }
           setCurrentUser(user);
           setAuthError(null);
           localStorage.setItem('zenith_current_user', JSON.stringify(user));
@@ -172,31 +188,100 @@ function App() {
       }
   };
 
-  const handleRegister = (name: string, email: string, pass: string) => {
+  const handleInitiateRegister = (name: string, email: string, pass: string) => {
       if (!activeLicense) return;
 
       const existingUser = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
       if (existingUser) {
           setAuthError("User with this email already exists.");
+          // In a real app, we might throw an error here to stop the UI transition
           return;
       }
 
-      const newUser: User = {
-          id: `u-${Date.now()}`,
-          name: name,
-          email: email,
-          password: pass,
-          role: Role.Admin, // First user registered is Admin
-          organizationId: activeLicense.organizationId,
-          avatarUrl: `https://i.pravatar.cc/150?u=${Date.now()}`,
-          dashboardWidgets: getDefaultWidgetsForRole(Role.Admin)
-      };
-
-      setAllEmployees(prev => [...prev, newUser]);
-      setCurrentUser(newUser);
+      setPendingRegistration({ name, email, password: pass });
+      const code = generateCode();
+      setVerificationCode(code);
       setAuthError(null);
-      localStorage.setItem('zenith_current_user', JSON.stringify(newUser));
-      setActiveView('dashboard');
+      
+      // MOCK EMAIL SENDING
+      setTimeout(() => {
+          alert(`[MOCK EMAIL] Verification Code for ${email}: ${code}`);
+          console.log(`[MOCK EMAIL] Verification Code for ${email}: ${code}`);
+      }, 500);
+
+      // We rely on Auth component to switch view to 'verify_email'
+      // Ideally we would return success/fail here
+  };
+
+  const handleVerifyEmail = (code: string) => {
+      if (code === verificationCode && pendingRegistration && activeLicense) {
+          const newUser: User = {
+              id: `u-${Date.now()}`,
+              name: pendingRegistration.name,
+              email: pendingRegistration.email,
+              password: pendingRegistration.password,
+              role: Role.Admin, // First user registered is Admin
+              organizationId: activeLicense.organizationId,
+              avatarUrl: `https://i.pravatar.cc/150?u=${Date.now()}`,
+              dashboardWidgets: getDefaultWidgetsForRole(Role.Admin),
+              isVerified: true
+          };
+
+          setAllEmployees(prev => [...prev, newUser]);
+          setCurrentUser(newUser);
+          setAuthError(null);
+          localStorage.setItem('zenith_current_user', JSON.stringify(newUser));
+          setActiveView('dashboard');
+          
+          // Cleanup
+          setPendingRegistration(null);
+          setVerificationCode(null);
+      } else {
+          setAuthError("Invalid verification code.");
+      }
+  };
+
+  const handleInitiateForgotPassword = (email: string) => {
+      const user = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (!user) {
+          // Security: Don't reveal if user exists, but for this mock we will just error
+          setAuthError("User not found."); 
+          return;
+      }
+
+      const code = generateCode();
+      setVerificationCode(code);
+      setResetEmail(email);
+      setAuthError(null);
+
+      // MOCK EMAIL SENDING
+      setTimeout(() => {
+          alert(`[MOCK EMAIL] Password Reset Code for ${email}: ${code}`);
+          console.log(`[MOCK EMAIL] Password Reset Code for ${email}: ${code}`);
+      }, 500);
+  };
+
+  const handleVerifyResetCode = (code: string) => {
+      if (code === verificationCode) {
+          setAuthError(null);
+          // Code verified, waiting for new password
+      } else {
+          setAuthError("Invalid reset code.");
+      }
+  };
+
+  const handleResetPassword = (newPassword: string) => {
+      if (resetEmail) {
+          setAllEmployees(prev => prev.map(u => 
+              u.email.toLowerCase() === resetEmail.toLowerCase() 
+              ? { ...u, password: newPassword } 
+              : u
+          ));
+          setAuthError(null);
+          setResetEmail(null);
+          setVerificationCode(null);
+          alert("Password reset successfully. Please login.");
+      }
   };
 
 
@@ -575,7 +660,16 @@ function App() {
   }
 
   if (!currentUser) {
-      return <Auth onLogin={handleLogin} onRegister={handleRegister} error={authError} onClearError={() => setAuthError(null)} />;
+      return <Auth 
+        onLogin={handleLogin} 
+        onInitiateRegister={handleInitiateRegister} 
+        onVerifyEmail={handleVerifyEmail}
+        onInitiateForgotPassword={handleInitiateForgotPassword}
+        onVerifyResetCode={handleVerifyResetCode}
+        onResetPassword={handleResetPassword}
+        error={authError} 
+        onClearError={() => setAuthError(null)} 
+      />;
   }
 
   return (

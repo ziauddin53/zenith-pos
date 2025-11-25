@@ -133,7 +133,7 @@ const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = (props) => (
 
 const KeyboardIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6ZM5.625 10.875a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM5.625 14.625a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM9 18.375a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6ZM5.625 10.875a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM5.625 14.625a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM9 18.375a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Z" />
     </svg>
 );
 
@@ -142,6 +142,11 @@ const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" />
     </svg>
 );
+
+const ShieldCheckIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" /></svg>
+);
+
 
 export const ICONS = {
     ChartBarIcon,
@@ -166,7 +171,8 @@ export const ICONS = {
     GlobeAltIcon,
     ChatBubbleLeftRightIcon,
     KeyboardIcon,
-    BuildingStorefrontIcon
+    BuildingStorefrontIcon,
+    ShieldCheckIcon
 };
 
 // --- TRANSLATIONS & CURRENCY ---
@@ -447,16 +453,16 @@ export const MOCK_MASTER_LICENSES: MasterLicense[] = [
 
 export const MOCK_USERS: User[] = [
   // Organization 1: Zenith Coffee
-  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', password: '123', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', password: '123', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager) },
-  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', password: '123', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', password: '123', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin), isVerified: true },
+  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', password: '123', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager), isVerified: true },
+  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', password: '123', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier), isVerified: true },
   
   // Organization 2: Tech Zone
-  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', password: '123', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin) },
-  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', password: '123', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier) },
+  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', password: '123', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin), isVerified: true },
+  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', password: '123', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier), isVerified: true },
   
   // Viewer for Org 1
-  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', password: '123', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer) },
+  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', password: '123', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer), isVerified: true },
 ];
 
 export const MOCK_PRODUCTS: Product[] = [

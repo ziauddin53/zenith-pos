@@ -12,11 +12,12 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  password?: string; // Added password field
+  password?: string;
   role: Role;
   avatarUrl: string;
   dashboardWidgets: Record<string, boolean>;
   organizationId?: string;
+  isVerified?: boolean; // New field for Email Verification
 }
 
 export interface Product {
