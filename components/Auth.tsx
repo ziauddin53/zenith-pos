@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 
-const { BuildingStorefrontIcon, ShieldCheckIcon, KeyIcon } = ICONS;
+const { BuildingStorefrontIcon, ShieldCheckIcon } = ICONS;
 
-export type AuthView = 'login' | 'register' | 'forgot_password' | 'verify_email' | 'verify_reset' | 'new_password';
+export type AuthView = 'login' | 'register' | 'forgot_password' | 'verify_email';
 
-interface AuthProps {
+export interface AuthProps {
     onLogin: (email: string, password: string) => void;
-    onInitiateRegister: (name: string, email: string, password: string) => void;
+    onInitiateRegister: (name: string, email: string, password: string, onSuccess: () => void) => void;
     onVerifyEmail: (code: string) => void;
     onInitiateForgotPassword: (email: string) => void;
     onVerifyResetCode: (code: string) => void;
@@ -20,10 +20,8 @@ interface AuthProps {
 export const Auth: React.FC<AuthProps> = ({ 
     onLogin, 
     onInitiateRegister, 
-    onVerifyEmail, 
+    onVerifyEmail,
     onInitiateForgotPassword,
-    onVerifyResetCode,
-    onResetPassword,
     error, 
     onClearError 
 }) => {
@@ -37,7 +35,6 @@ export const Auth: React.FC<AuthProps> = ({
     const changeView = (view: AuthView) => {
         setAuthView(view);
         onClearError?.();
-        // Reset sensitive fields when switching views except email which is often needed
         if (view === 'login') {
             setPassword('');
         }
@@ -55,69 +52,40 @@ export const Auth: React.FC<AuthProps> = ({
                     alert("Passwords do not match!");
                     return;
                 }
-                onInitiateRegister(name, email, password);
-                // The parent component handles state transition to 'verify_email' on success
-                // But since we are mocking, we can manually trigger it here if onInitiateRegister doesn't throw immediate error
-                // Ideally, App.tsx should pass a callback or prop to signal "registration initiated"
-                // For this implementation, let's assume App.tsx will change a prop or we wait for user feedback
-                // Actually, cleaner is if App.tsx passes a prop 'pendingRegistration' which we watch, 
-                // but for simplicity, let's assume validation passes and we set the view in App.tsx render logic if needed
-                // OR simpler: we assume success if no error is thrown, but error state is async.
-                // We will rely on App.tsx to handle the visual transition if possible, 
-                // OR we pass a callback to the prop. 
-                // Let's modify App.tsx to handle the view state or we handle logic here.
-                // Let's rely on props callbacks.
+                onInitiateRegister(name, email, password, () => {
+                    setAuthView('verify_email');
+                });
                 break;
             case 'verify_email':
                 onVerifyEmail(verificationCode);
                 break;
             case 'forgot_password':
                 onInitiateForgotPassword(email);
-                // Move to verify reset view on success (Handled by App.tsx ideally, but we can optimistically switch or wait)
-                setAuthView('verify_reset'); 
-                break;
-            case 'verify_reset':
-                onVerifyResetCode(verificationCode);
-                setAuthView('new_password');
-                break;
-            case 'new_password':
-                if (password !== confirmPassword) {
-                    alert("Passwords do not match!");
-                    return;
-                }
-                onResetPassword(password);
-                setAuthView('login');
                 break;
         }
     };
 
-    // Helper to render title based on view
     const getTitle = () => {
         switch(authView) {
             case 'login': return 'Welcome Back';
             case 'register': return 'Create Account';
             case 'verify_email': return 'Verify Email';
             case 'forgot_password': return 'Forgot Password';
-            case 'verify_reset': return 'Enter Code';
-            case 'new_password': return 'Reset Password';
         }
     };
 
-    // Helper to render subtitle
     const getSubtitle = () => {
         switch(authView) {
             case 'login': return 'Please login to your account';
             case 'register': return 'Register your admin account';
-            case 'verify_email': return `We sent a code to ${email}`;
-            case 'forgot_password': return 'Enter your email to receive a reset code';
-            case 'verify_reset': return 'Enter the 4-digit code sent to your email';
-            case 'new_password': return 'Enter your new password below';
+            case 'verify_email': return 'Enter the code sent to your email';
+            case 'forgot_password': return 'Enter your email to receive a reset link';
         }
     };
 
     return (
         <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-neutral-800 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-w-4xl">
+            <div className="bg-white dark:bg-neutral-800 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-w-4xl">
                 
                 {/* Left Side (Brand) */}
                 <div className="bg-primary-600 p-8 md:w-1/2 flex flex-col justify-center items-center text-center text-white">
@@ -150,7 +118,6 @@ export const Auth: React.FC<AuthProps> = ({
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        {/* Name Field (Register only) */}
                         {authView === 'register' && (
                             <div>
                                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Full Name</label>
@@ -165,9 +132,8 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
-                        {/* Email Field (Login, Register, Forgot Password) */}
-                        {['login', 'register', 'forgot_password'].includes(authView) && (
-                            <div>
+                        {authView !== 'verify_email' && (
+                             <div>
                                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Email Address</label>
                                 <input 
                                     type="email" 
@@ -180,28 +146,10 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
-                        {/* Verification Code Field */}
-                        {['verify_email', 'verify_reset'].includes(authView) && (
-                            <div className="text-center">
-                                <ShieldCheckIcon className="w-12 h-12 text-primary-500 mx-auto mb-4" />
-                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Verification Code</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    maxLength={4}
-                                    value={verificationCode}
-                                    onChange={(e) => setVerificationCode(e.target.value)}
-                                    className="w-32 px-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-center text-xl font-mono tracking-widest mx-auto block"
-                                    placeholder="0000"
-                                />
-                            </div>
-                        )}
-
-                        {/* Password Field */}
-                        {['login', 'register', 'new_password'].includes(authView) && (
+                        {['login', 'register'].includes(authView) && (
                             <div>
                                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                                    {authView === 'new_password' ? 'New Password' : 'Password'}
+                                    Password
                                 </label>
                                 <input 
                                     type="password" 
@@ -225,8 +173,7 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
-                        {/* Confirm Password Field */}
-                        {['register', 'new_password'].includes(authView) && (
+                        {authView === 'register' && (
                             <div>
                                 <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Confirm Password</label>
                                 <input 
@@ -240,16 +187,35 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
+                        {authView === 'verify_email' && (
+                            <div>
+                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Verification Code</label>
+                                <div className="relative">
+                                    <ShieldCheckIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={verificationCode}
+                                        onChange={(e) => setVerificationCode(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none tracking-widest text-lg font-mono"
+                                        placeholder="123456"
+                                        maxLength={6}
+                                    />
+                                </div>
+                                <p className="text-xs text-neutral-500 mt-2">
+                                    We sent a code to <span className="font-semibold">{email}</span>
+                                </p>
+                            </div>
+                        )}
+
                         <button 
                             type="submit" 
                             className="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700 transition-colors mt-2"
                         >
                             {authView === 'login' && 'Sign In'}
-                            {authView === 'register' && 'Send Verification Code'}
-                            {authView === 'verify_email' && 'Verify & Login'}
-                            {authView === 'forgot_password' && 'Send Reset Code'}
-                            {authView === 'verify_reset' && 'Verify Code'}
-                            {authView === 'new_password' && 'Reset Password'}
+                            {authView === 'register' && 'Send Code'}
+                            {authView === 'verify_email' && 'Verify & Register'}
+                            {authView === 'forgot_password' && 'Send Reset Link'}
                         </button>
                     </form>
 
@@ -266,7 +232,7 @@ export const Auth: React.FC<AuthProps> = ({
                                 <button onClick={() => changeView('login')} className="text-primary-600 font-semibold hover:underline">Login</button>
                             </>
                         )}
-                        {['forgot_password', 'verify_email', 'verify_reset', 'new_password'].includes(authView) && (
+                        {(authView === 'forgot_password' || authView === 'verify_email') && (
                             <button onClick={() => changeView('login')} className="text-neutral-500 hover:text-neutral-800 font-medium">← Back to Login</button>
                         )}
                     </div>

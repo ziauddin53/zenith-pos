@@ -156,14 +156,18 @@ export interface LicenseKey {
   organizationId?: string;
 }
 
-// NEW: The Master License for the Shop Owner
+// The Master License for the Shop Owner
 export interface MasterLicense {
   key: string;
-  organizationId: string;
+  organizationId?: string; // ID of the org that activated the key. Undefined when only Generated.
   validUntil: string; // ISO Date
   planType: 'Standard' | 'Premium' | 'Enterprise';
-  status: 'Active' | 'Revoked' | 'Expired';
-  maxShops?: number; // 1 for Single, Infinity for Multi
+  status: 'Generated' | 'Activated' | 'Revoked' | 'Expired';
+  maxShops?: number;
+  enabledFeatures?: string[];
+  businessNameLock?: string; // Optional business name the key is locked to.
+  emailLock?: string; // NEW: Email address the key is locked to.
+  activationDate?: string; // ISO Date of activation.
 }
 
 // --- NEW TYPES FOR MULTI-LANGUAGE & CURRENCY ---

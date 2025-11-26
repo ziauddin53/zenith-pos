@@ -1,6 +1,5 @@
 
 import React, { useState } from 'react';
-import { validateLicenseKey } from '../constants';
 import { MasterLicense } from '../types';
 
 const KeyIcon: React.FC<{ className?: string }> = (props) => (
@@ -15,123 +14,206 @@ const CheckBadgeIcon: React.FC<{ className?: string }> = (props) => (
   </svg>
 );
 
+const EnvelopeIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+    </svg>
+);
+
 interface LicenseGateProps {
   onSuccess: (license: MasterLicense) => void;
   onStartTrial: () => void;
+  licenseDatabase: MasterLicense[];
 }
 
-export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTrial }) => {
+export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTrial, licenseDatabase }) => {
   const [inputKey, setInputKey] = useState('');
+  const [inputEmail, setInputEmail] = useState('');
   const [businessNameInput, setBusinessNameInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleActivate = (e: React.FormEvent) => {
+  const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // Simulate minimal network/processing delay for UX
-    setTimeout(() => {
-      const result = validateLicenseKey(inputKey, businessNameInput);
+    // Simulate network validation delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-      if (!result.valid) {
-        setError(result.error || 'Invalid license key. Please check and try again.');
+    const key = inputKey.trim();
+    const email = inputEmail.trim().toLowerCase();
+    const businessName = businessNameInput.trim();
+
+    // 1. Find License in Database
+    const license = licenseDatabase.find(l => l.key === key);
+
+    if (!license) {
+        setError("Invalid license key. Please check the key provided by your vendor.");
         setLoading(false);
         return;
-      }
+    }
 
-      // Success!
-      onSuccess(result.license!);
-      setLoading(false);
-    }, 600);
+    // 2. Check Status
+    if (license.status === 'Activated') {
+        setError("This license key has already been activated.");
+        setLoading(false);
+        return;
+    }
+
+    if (license.status === 'Revoked') {
+        setError("This license key has been revoked. Please contact support.");
+        setLoading(false);
+        return;
+    }
+
+    // 3. Check Expiry
+    if (new Date(license.validUntil) < new Date()) {
+        setError("This license key has expired.");
+        setLoading(false);
+        return;
+    }
+    
+    // 4. Validate Email Lock (New Security Feature)
+    if (license.emailLock) {
+        if (license.emailLock.toLowerCase() !== email) {
+            setError("This license key is locked to a different email address. Please use the email assigned during purchase.");
+            setLoading(false);
+            return;
+        }
+    } else {
+        // If it's a legacy key without email lock, we might optionally force locking it now, or just warn.
+        // For security, we require email input now.
+        if(!email) {
+             setError("Please enter your email address.");
+             setLoading(false);
+             return;
+        }
+    }
+
+    // 5. Validate Business Name (if locked)
+    if (license.businessNameLock) {
+        if (license.businessNameLock.toLowerCase() !== businessName.toLowerCase()) {
+            setError(`This license is locked to the business name: "${license.businessNameLock}". Please enter it exactly as registered.`);
+            setLoading(false);
+            return;
+        }
+    } else if (!businessName && !license.businessNameLock) {
+         if (!businessName) {
+            setError("Please enter a Business Name to associate with this license.");
+            setLoading(false);
+            return;
+         }
+    }
+
+    // Success
+    setLoading(false);
+    onSuccess({
+        ...license,
+        businessNameLock: businessName || license.businessNameLock,
+        emailLock: email || license.emailLock // Ensure it's locked to this email now
+    });
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-neutral-800 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden">
-        <div className="bg-primary-600 p-8 text-center">
-          <div className="mx-auto bg-white w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg">
-            <KeyIcon className="w-8 h-8 text-primary-600" />
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex flex-col justify-center items-center p-4">
+      <div className="bg-white dark:bg-neutral-800 p-8 rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 bg-primary-100 dark:bg-primary-900/50 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400">
+            <KeyIcon className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Zenith POS</h1>
-          <p className="text-primary-100 mt-2">Professional Activation</p>
         </div>
         
-        <div className="p-8">
-          <div className="mb-6 text-center">
-            <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Enter License Key</h2>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Please enter your business details and product key provided by your vendor.
-            </p>
-          </div>
+        <h1 className="text-2xl font-bold text-center text-neutral-800 dark:text-neutral-100 mb-2">Activate Zenith POS</h1>
+        <p className="text-center text-neutral-500 dark:text-neutral-400 mb-8 text-sm">
+          Enter your license details to activate the software.
+        </p>
 
-          <form onSubmit={handleActivate} className="space-y-4">
-            <div>
-              <label htmlFor="businessName" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Business Name</label>
-              <input
-                  type="text"
-                  id="businessName"
-                  value={businessNameInput}
-                  onChange={(e) => setBusinessNameInput(e.target.value)}
-                  placeholder="My Store Name"
-                  className="w-full px-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-              />
+        {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0">
+                  <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                </svg>
+                <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
             </div>
-            <div>
-              <label htmlFor="license" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">License Key</label>
-              <div className="relative">
+        )}
+
+        <form onSubmit={handleActivate} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              Email Address
+            </label>
+            <div className="relative">
+                <EnvelopeIcon className="absolute left-3 top-3 w-5 h-5 text-neutral-400" />
                 <input
-                  type="text"
-                  id="license"
-                  value={inputKey}
-                  onChange={(e) => setInputKey(e.target.value)}
-                  placeholder="ZENITH-XXXX-XXXX-XXXX"
-                  className="w-full pl-4 pr-10 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-center uppercase tracking-widest outline-none transition-all"
+                type="email"
+                required
+                value={inputEmail}
+                onChange={(e) => setInputEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all dark:text-white"
+                placeholder="registered@email.com"
                 />
-                {inputKey && !error && (
-                  <div className="absolute right-3 top-2 text-green-500">
-                    <CheckBadgeIcon className="w-6 h-6" />
-                  </div>
-                )}
-              </div>
             </div>
+          </div>
 
-            {error && (
-              <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm text-center animate-pulse">
-                {error}
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              License Key
+            </label>
+            <input
+              type="text"
+              required
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all font-mono text-sm dark:text-white"
+              placeholder="ZENITH-XXXX-XXXX-XXXX"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+              Business Name
+            </label>
+            <input
+              type="text"
+              value={businessNameInput}
+              onChange={(e) => setBusinessNameInput(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 focus:ring-2 focus:ring-primary-500 outline-none transition-all dark:text-white"
+              placeholder="e.g. My Awesome Shop"
+            />
+            <p className="text-xs text-neutral-400 mt-1">Leave blank if not specified by vendor.</p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 rounded-lg transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+          >
+            {loading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+                <>
+                    Activate License
+                    <CheckBadgeIcon className="w-5 h-5 ml-2" />
+                </>
             )}
+          </button>
+        </form>
 
-            <button
-              type="submit"
-              disabled={loading || !inputKey || !businessNameInput}
-              className="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
+        <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700 text-center">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">Want to try before buying?</p>
+            <button 
+                onClick={onStartTrial}
+                className="text-primary-600 dark:text-primary-400 font-semibold text-sm hover:underline"
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Verifying...
-                </span>
-              ) : 'Activate Software'}
+                Start 7-Day Free Trial
             </button>
-          </form>
-
-          <div className="mt-4 text-center">
-              <button onClick={onStartTrial} className="text-sm text-primary-600 dark:text-primary-400 hover:underline font-medium">
-                  Start 7-Day Free Trial
-              </button>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-neutral-100 dark:border-neutral-700 text-center">
-            <p className="text-xs text-neutral-400">
-              For support, contact <span className="font-semibold text-neutral-600 dark:text-neutral-300">support@zenithpos.com</span>
-            </p>
-          </div>
         </div>
+      </div>
+      
+      <div className="mt-8 text-center text-neutral-500 dark:text-neutral-400 text-sm">
+        <p>Need a license? Contact Sales</p>
+        <p className="mt-1 font-medium">ziauddin537000@gmail.com</p>
       </div>
     </div>
   );

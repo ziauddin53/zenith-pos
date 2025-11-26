@@ -13,6 +13,7 @@ import { Auth, AuthView } from './components/Auth';
 import VirtualKeyboard from './components/VirtualKeyboard';
 import { Role, User, Product, Customer, Sale, LicenseKey, Notification, Supplier, PurchaseOrder, Shift, HeldCart, Expense, MasterLicense, Language, Currency } from './types';
 import { MOCK_USERS, MOCK_PRODUCTS, MOCK_CUSTOMERS, MOCK_SALES_DATA, MANAGEMENT_CONFIG, MOCK_LICENSE_KEYS, MOCK_NOTIFICATIONS, MOCK_SUPPLIERS, MOCK_PURCHASE_ORDERS, MOCK_EXPENSES, TRANSLATIONS, CURRENCIES, TRIAL_DURATION_DAYS, getDefaultWidgetsForRole } from './constants';
+import { supabase, isSupabaseConfigured } from './supabaseClient'; // Import Supabase Client & Config Flag
 
 // Helper to load from LocalStorage or fall back to Mocks
 function loadFromStorage<T>(key: string, fallback: T[]): T[] {
@@ -25,20 +26,12 @@ function App() {
   const [activeLicense, setActiveLicense] = useState<MasterLicense | null>(null);
   const [isLoadingLicense, setIsLoadingLicense] = useState(true);
   const [isInTrial, setIsInTrial] = useState(false);
+  const [licenseDatabase, setLicenseDatabase] = useState<MasterLicense[]>(() => loadFromStorage('zenith_license_database', []));
 
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  
-  // Auth Verification State (Temporary)
-  const [pendingRegistration, setPendingRegistration] = useState<{name: string, email: string, password: string} | null>(null);
-  const [verificationCode, setVerificationCode] = useState<string | null>(null);
-  const [resetEmail, setResetEmail] = useState<string | null>(null);
-  // We need to control the view state of Auth component from here to sync with success events
-  // However, simpler to let Auth component handle its view state based on callbacks
-  // But wait, to switch from Register form to Verify form, Auth needs to know it was successful.
-  // The current Auth implementation handles view switching locally in handleSubmit case by case. 
-  // We will trigger alerts/console logs here for the codes.
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // --- 1. GLOBAL PERSISTENT STATE (Loads from Browser Storage) ---
   const [allEmployees, setAllEmployees] = useState<User[]>(() => loadFromStorage('zenith_users', MOCK_USERS));
@@ -77,13 +70,13 @@ function App() {
   useEffect(() => localStorage.setItem('zenith_sales', JSON.stringify(allSales)), [allSales]);
   useEffect(() => localStorage.setItem('zenith_expenses', JSON.stringify(allExpenses)), [allExpenses]);
   useEffect(() => localStorage.setItem('zenith_licenses', JSON.stringify(allLicenseKeys)), [allLicenseKeys]);
+  useEffect(() => localStorage.setItem('zenith_license_database', JSON.stringify(licenseDatabase)), [licenseDatabase]);
 
   // --- 3. NETWORK & SYNC LISTENERS ---
   useEffect(() => {
       const handleOnline = () => {
           setIsOnline(true);
           setNotifications(prev => [{ id: `n-net-${Date.now()}`, title: 'Back Online', message: 'Connection restored. Syncing data...', timestamp: new Date().toISOString(), read: false }, ...prev]);
-          // Trigger sync function here in future
       };
       const handleOffline = () => {
           setIsOnline(false);
@@ -102,237 +95,373 @@ function App() {
   // --- 4. LICENSE CHECK ---
   useEffect(() => {
     const storedLicense = localStorage.getItem('zenith_master_license');
-    const trialStart = localStorage.getItem('zenith_trial_start');
-    const savedUser = localStorage.getItem('zenith_current_user');
-
-    // Check License First
+    
+    // 1. Check for a valid, stored master license first.
     if (storedLicense) {
       try {
         const parsedLicense = JSON.parse(storedLicense) as MasterLicense;
-        if (new Date(parsedLicense.validUntil) > new Date()) {
-           setActiveLicense(parsedLicense);
-           
-           // Try to restore session if user was logged in
-           if (savedUser) {
-               const userObj = JSON.parse(savedUser);
-               // Verify user still exists
-               const exists = allEmployees.find(u => u.id === userObj.id);
-               if (exists) {
-                   setCurrentUser(exists);
-               }
-           }
-           setIsLoadingLicense(false);
-           return;
+        // Verify structure (simple check)
+        if (parsedLicense && parsedLicense.key && parsedLicense.validUntil) {
+             if (new Date(parsedLicense.validUntil) > new Date()) {
+                setActiveLicense(parsedLicense);
+                setIsInTrial(false);
+                setIsLoadingLicense(false);
+                return; // License is valid, app starts.
+             } else {
+                // License expired, remove it.
+                localStorage.removeItem('zenith_master_license');
+             }
         } else {
-           localStorage.removeItem('zenith_master_license');
+            // Invalid structure
+             localStorage.removeItem('zenith_master_license');
         }
       } catch (e) {
+        // Corrupted key.
         localStorage.removeItem('zenith_master_license');
       }
     }
-
-    // Check Trial Second
-    if (trialStart) {
-        const startDate = new Date(trialStart);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - startDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-        if (diffDays <= TRIAL_DURATION_DAYS) {
-            setIsInTrial(true);
-            setActiveLicense({ 
-                key: 'TRIAL_MODE', 
-                organizationId: 'org_coffee', // Default to coffee org for trial
-                validUntil: new Date(now.getTime() + (TRIAL_DURATION_DAYS * 24 * 60 * 60 * 1000)).toISOString(),
-                planType: 'Standard',
-                status: 'Active',
-                maxShops: Infinity
-            });
-             
-            // Auto-login for trial convenience if no session
-             if(!currentUser && savedUser) {
-                 setCurrentUser(JSON.parse(savedUser));
-             }
-        } else {
-            localStorage.removeItem('zenith_trial_start'); // Trial Expired
-        }
-    }
-
+    // If we reach here, no valid license was found.
+    setActiveLicense(null); 
     setIsLoadingLicense(false);
   }, []);
 
-  // --- AUTH LOGIC ---
+  // --- 5. SUPABASE AUTH INTEGRATION ---
 
-  const generateCode = () => Math.floor(1000 + Math.random() * 9000).toString();
-
-  const handleLogin = (email: string, pass: string) => {
-      if (!activeLicense) return;
+  // Map Supabase User to App User
+  const mapSupabaseUser = (u: any, license?: MasterLicense | null): User => {
+      // Prioritize metadata Organization ID (for employees invite to specific orgs)
+      // Fallback to License Organization ID (for the Owner activating the license)
+      const orgId = u.user_metadata?.organizationId || license?.organizationId;
       
-      const user = allEmployees.find(u => 
-          u.email.toLowerCase() === email.toLowerCase() && 
-          u.password === pass &&
-          u.organizationId === activeLicense.organizationId
-      );
-
-      if (user) {
-          if (user.isVerified === false) {
-             setAuthError("Email not verified. Please contact support or register again.");
-             return;
-          }
-          setCurrentUser(user);
-          setAuthError(null);
-          localStorage.setItem('zenith_current_user', JSON.stringify(user));
-          setActiveView(user.role === Role.Cashier ? 'pos' : 'dashboard');
-      } else {
-          setAuthError("Invalid email or password for this organization.");
-      }
+      return {
+          id: u.id,
+          email: u.email,
+          // Metadata name -> email prefix -> default
+          name: u.user_metadata?.name || u.email?.split('@')[0] || 'User',
+          // Metadata role -> default Admin (safe fallback for owner)
+          role: u.user_metadata?.role || Role.Admin,
+          organizationId: orgId,
+          avatarUrl: u.user_metadata?.avatarUrl || `https://i.pravatar.cc/150?u=${u.id}`,
+          dashboardWidgets: u.user_metadata?.dashboardWidgets || getDefaultWidgetsForRole(Role.Admin),
+          isVerified: u.email_confirmed_at != null
+      };
   };
 
-  const handleInitiateRegister = (name: string, email: string, pass: string) => {
-      if (!activeLicense) return;
+  const handleLogout = async () => {
+    if (isSupabaseConfigured) {
+        try {
+            await supabase.auth.signOut();
+        } catch (e) {
+            console.warn("Supabase signout failed (likely offline)");
+        }
+    }
+    // Only clear the user session, DO NOT clear the license
+    setCurrentUser(null);
+    setActiveView('dashboard');
+  };
 
-      const existingUser = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (existingUser) {
-          setAuthError("User with this email already exists.");
-          // In a real app, we might throw an error here to stop the UI transition
-          return;
-      }
+  // Check for existing session
+  useEffect(() => {
+    const checkSession = async () => {
+        if (!isSupabaseConfigured) {
+            console.log("Supabase not configured. Skipping session check.");
+            setIsAuthLoading(false);
+            return;
+        }
 
-      setPendingRegistration({ name, email, password: pass });
-      const code = generateCode();
-      setVerificationCode(code);
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) throw error;
+            if (session?.user && activeLicense) {
+                // SECURITY CHECK: Ensure session user email matches the locked license email
+                if (activeLicense.emailLock && session.user.email.toLowerCase() !== activeLicense.emailLock.toLowerCase()) {
+                    console.warn("Mismatched session user and license detected. Forcing logout.");
+                    handleLogout(); // This will clear the user but keep the license
+                    return;
+                }
+                setCurrentUser(mapSupabaseUser(session.user, activeLicense));
+                setActiveView('dashboard');
+            }
+        } catch (error) {
+            console.log("Supabase session check skipped/failed (likely offline or demo mode).");
+        } finally {
+            setIsAuthLoading(false);
+        }
+    };
+    if (activeLicense) {
+        checkSession();
+    } else {
+        setIsAuthLoading(false);
+    }
+  }, [activeLicense]);
+  
+  // Auth state change listener
+  useEffect(() => {
+     if (!isSupabaseConfigured) return;
+
+     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user && activeLicense) {
+            setCurrentUser(mapSupabaseUser(session.user, activeLicense));
+        } else {
+            setCurrentUser(prev => (prev && prev.id.startsWith('u')) ? prev : null);
+        }
+        setIsAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [activeLicense]);
+
+
+  const handleLogin = async (email: string, pass: string) => {
       setAuthError(null);
       
-      // MOCK EMAIL SENDING
-      setTimeout(() => {
-          alert(`[MOCK EMAIL] Verification Code for ${email}: ${code}`);
-          console.log(`[MOCK EMAIL] Verification Code for ${email}: ${code}`);
-      }, 500);
-
-      // We rely on Auth component to switch view to 'verify_email'
-      // Ideally we would return success/fail here
-  };
-
-  const handleVerifyEmail = (code: string) => {
-      if (code === verificationCode && pendingRegistration && activeLicense) {
-          const newUser: User = {
-              id: `u-${Date.now()}`,
-              name: pendingRegistration.name,
-              email: pendingRegistration.email,
-              password: pendingRegistration.password,
-              role: Role.Admin, // First user registered is Admin
-              organizationId: activeLicense.organizationId,
-              avatarUrl: `https://i.pravatar.cc/150?u=${Date.now()}`,
-              dashboardWidgets: getDefaultWidgetsForRole(Role.Admin),
-              isVerified: true
-          };
-
-          setAllEmployees(prev => [...prev, newUser]);
-          setCurrentUser(newUser);
-          setAuthError(null);
-          localStorage.setItem('zenith_current_user', JSON.stringify(newUser));
+      // SECURITY CHECK: Enforce email lock before any login attempt.
+      if (activeLicense && activeLicense.emailLock && email.toLowerCase() !== activeLicense.emailLock.toLowerCase()) {
+          setAuthError(`This device is licensed to ${activeLicense.emailLock}. Please log in with that email.`);
+          return;
+      }
+      
+      // 1. PRIORITY: Check MOCK_USERS from constants first.
+      const hardcodedUser = MOCK_USERS.find(u => u.email === email && u.password === pass);
+      if (hardcodedUser) {
+          setAllEmployees(prev => {
+              const exists = prev.find(u => u.id === hardcodedUser.id);
+              if (exists) return prev.map(u => u.id === hardcodedUser.id ? hardcodedUser : u);
+              return [...prev, hardcodedUser];
+          });
+          setCurrentUser(hardcodedUser);
           setActiveView('dashboard');
-          
-          // Cleanup
-          setPendingRegistration(null);
-          setVerificationCode(null);
-      } else {
-          setAuthError("Invalid verification code.");
-      }
-  };
-
-  const handleInitiateForgotPassword = (email: string) => {
-      const user = allEmployees.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) {
-          // Security: Don't reveal if user exists, but for this mock we will just error
-          setAuthError("User not found."); 
           return;
       }
 
-      const code = generateCode();
-      setVerificationCode(code);
-      setResetEmail(email);
+      // 2. Check Local Storage Employees (users created via UI or Mock Register)
+      const storedUser = allEmployees.find(u => u.email === email && u.password === pass);
+      if (storedUser) {
+          setCurrentUser(storedUser);
+          setActiveView('dashboard');
+          return;
+      }
+
+      // 3. Try Supabase Auth
+      if (!isSupabaseConfigured) {
+          setAuthError("Invalid credentials. If this is a new registration, please Register first.");
+          return;
+      }
+
+      try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password: pass,
+          });
+
+          if (error) {
+              setAuthError(error.message);
+          } else if (data.user) {
+              setCurrentUser(mapSupabaseUser(data.user, activeLicense));
+              setActiveView('dashboard');
+          }
+      } catch (err) {
+          console.error(err);
+          setAuthError("Network error: Unable to connect to authentication server.");
+      }
+  };
+
+  const handleInitiateRegister = async (name: string, email: string, pass: string) => {
+      if (!activeLicense || !activeLicense.organizationId) {
+          setAuthError("Cannot register without an active license.");
+          return;
+      }
+
+      // SECURITY CHECK: Prevent new registrations if the device is already locked to a different email.
+      if (activeLicense.emailLock && email.toLowerCase() !== activeLicense.emailLock.toLowerCase()) {
+          setAuthError(`This software is already activated for ${activeLicense.emailLock}. You cannot register a new account.`);
+          return;
+      }
+
+      if (allEmployees.find(u => u.email === email)) {
+            setAuthError("This email is already registered locally.");
+            return;
+      }
+
       setAuthError(null);
 
-      // MOCK EMAIL SENDING
-      setTimeout(() => {
-          alert(`[MOCK EMAIL] Password Reset Code for ${email}: ${code}`);
-          console.log(`[MOCK EMAIL] Password Reset Code for ${email}: ${code}`);
-      }, 500);
+      const newUser: User = {
+          id: `u${Date.now()}`,
+          name,
+          email,
+          password: pass,
+          role: Role.Admin,
+          avatarUrl: `https://i.pravatar.cc/150?u=${email}`,
+          dashboardWidgets: getDefaultWidgetsForRole(Role.Admin),
+          organizationId: activeLicense.organizationId,
+          isVerified: false
+      };
+
+      setAllEmployees(prev => [...prev, newUser]);
+
+      if (isSupabaseConfigured) {
+          try {
+              const { error } = await supabase.auth.signUp({
+                  email,
+                  password: pass,
+                  options: {
+                      emailRedirectTo: window.location.origin,
+                      data: {
+                          name,
+                          role: Role.Admin,
+                          organizationId: activeLicense.organizationId,
+                          dashboardWidgets: getDefaultWidgetsForRole(Role.Admin)
+                      }
+                  }
+              });
+              if (error && !error.message.toLowerCase().includes('user already registered')) {
+                  console.warn("Cloud registration warning:", error.message);
+              }
+          } catch (err) {
+              console.warn("Cloud registration skipped (offline/error). Local account created.");
+          }
+      }
+
+      setCurrentUser(newUser);
+      setActiveView('dashboard');
+      alert("Registration successful! You are now logged in.");
   };
 
-  const handleVerifyResetCode = (code: string) => {
-      if (code === verificationCode) {
-          setAuthError(null);
-          // Code verified, waiting for new password
-      } else {
-          setAuthError("Invalid reset code.");
+  const handleInitiateForgotPassword = async (email: string) => {
+      if (!isSupabaseConfigured) {
+          setAuthError("Password reset is not available in demo mode.");
+          return;
+      }
+
+      setAuthError(null);
+      try {
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+          });
+
+          if (error) {
+              setAuthError(error.message);
+          } else {
+              alert("Password reset link sent to your email.");
+          }
+      } catch (err) {
+          setAuthError("Network error: Unable to send reset email.");
       }
   };
+  
+  const handleResetPassword = async (password: string) => {
+      if (!isSupabaseConfigured) return;
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) alert(error.message);
+      else alert("Password updated successfully!");
+  };
 
-  const handleResetPassword = (newPassword: string) => {
-      if (resetEmail) {
-          setAllEmployees(prev => prev.map(u => 
-              u.email.toLowerCase() === resetEmail.toLowerCase() 
-              ? { ...u, password: newPassword } 
-              : u
-          ));
-          setAuthError(null);
-          setResetEmail(null);
-          setVerificationCode(null);
-          alert("Password reset successfully. Please login.");
-      }
+  const handleUpdateCurrentUser = (updatedData: Partial<User>) => {
+    if (!currentUser) return;
+    
+    const updatedUser = { ...currentUser, ...updatedData };
+    setCurrentUser(updatedUser);
+
+    setAllEmployees(prev => 
+        prev.map(emp => emp.id === currentUser.id ? { ...emp, ...updatedData } : emp)
+    );
+    
+    if (!currentUser.id.startsWith('u') && isSupabaseConfigured) {
+        supabase.auth.updateUser({ data: { 
+            name: updatedUser.name, 
+            avatarUrl: updatedUser.avatarUrl 
+        } }).catch(e => console.warn("Failed to sync user update to cloud"));
+    }
   };
 
 
-  const handleLicenseActivation = (license: MasterLicense) => {
-    localStorage.setItem('zenith_master_license', JSON.stringify(license));
-    localStorage.removeItem('zenith_trial_start'); // Clear trial if license added
-    setActiveLicense(license);
+  const handleLicenseActivation = (licenseToActivate: MasterLicense) => {
+    const organizationId = `org_${licenseToActivate.key.split('-')[2].toLowerCase()}`;
+    const activatedLicense: MasterLicense = {
+        ...licenseToActivate,
+        status: 'Activated',
+        activationDate: new Date().toISOString(),
+        organizationId: organizationId,
+    };
+    
+    setLicenseDatabase(prevDb => 
+        prevDb.map(lic => lic.key === activatedLicense.key ? activatedLicense : lic)
+    );
+
+    localStorage.setItem('zenith_master_license', JSON.stringify(activatedLicense));
+    localStorage.removeItem('zenith_trial_start');
+
+    // WIPE ALL DEMO DATA ON ACTIVATION
+    setAllProducts([]);
+    setAllCustomers([]);
+    setAllSuppliers([]);
+    setAllPurchaseOrders([]);
+    setAllSales([]);
+    setAllExpenses([]);
+    setAllLicenseKeys([]);
+    setAllEmployees([]);
+
+    // Clear Storage
+    localStorage.removeItem('zenith_products');
+    localStorage.removeItem('zenith_customers');
+    localStorage.removeItem('zenith_suppliers');
+    localStorage.removeItem('zenith_pos');
+    localStorage.removeItem('zenith_sales');
+    localStorage.removeItem('zenith_expenses');
+    localStorage.removeItem('zenith_licenses');
+    localStorage.removeItem('zenith_users');
+    
+    setActiveLicense(activatedLicense);
     setIsInTrial(false);
-    // Don't auto login, user needs to register or login now
   };
 
   const handleStartTrial = () => {
-      const now = new Date().toISOString();
-      localStorage.setItem('zenith_trial_start', now);
+      let start = localStorage.getItem('zenith_trial_start');
+      if (!start) {
+          start = new Date().toISOString();
+          localStorage.setItem('zenith_trial_start', start);
+      }
+
+      const startDate = new Date(start);
+      const diffDays = Math.ceil(Math.abs(new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays > TRIAL_DURATION_DAYS) {
+          alert("Your trial period has expired. Please enter a valid license key to continue.");
+          return;
+      }
+
       setIsInTrial(true);
       
-      // Create a dummy license object for state
       const trialLicense: MasterLicense = {
           key: 'TRIAL',
-          organizationId: 'org_coffee', // Default demo org
-          validUntil: new Date(Date.now() + (7 * 86400000)).toISOString(),
-          planType: 'Standard',
-          status: 'Active',
-          maxShops: Infinity
+          organizationId: 'org_trial', 
+          validUntil: new Date(startDate.getTime() + (TRIAL_DURATION_DAYS * 86400000)).toISOString(),
+          planType: 'Premium',
+          status: 'Activated',
+          activationDate: new Date().toISOString(),
+          maxShops: 1,
+          enabledFeatures: ['AI_INSIGHTS', 'MULTI_LANGUAGE']
       };
       setActiveLicense(trialLicense);
-      // Automatically log in as demo admin for trial flow
-      const demoUser = MOCK_USERS.find(u => u.role === Role.Admin && u.organizationId === 'org_coffee');
-      if(demoUser) {
-          setCurrentUser(demoUser);
-          localStorage.setItem('zenith_current_user', JSON.stringify(demoUser));
-      }
   };
 
-  const handleDeactivateLicense = () => {
-    localStorage.removeItem('zenith_master_license');
-    localStorage.removeItem('zenith_trial_start');
-    localStorage.removeItem('zenith_current_user');
-    setActiveLicense(null);
-    setCurrentUser(null);
-    setIsInTrial(false);
-  }
-
-  const handleLogout = () => {
-      setCurrentUser(null);
-      localStorage.removeItem('zenith_current_user');
-      setAuthError(null);
+  const handleToggleShift = () => {
+    if (!currentUser) return;
+    if (activeShift) {
+        setActiveShift(null);
+    } else {
+        const newShift: Shift = {
+            id: `sh${Date.now()}`,
+            userId: currentUser.id,
+            userName: currentUser.name,
+            startTime: new Date().toISOString(),
+            endTime: null
+        };
+        setActiveShift(newShift);
+    }
   };
 
-  // --- 5. DERIVED STATE (Multi-Tenancy Filtering) ---
-  // Logic only runs if currentUser is present
+  // --- DERIVED STATE (Multi-Tenancy Filtering) ---
   const currentOrgId = currentUser?.organizationId;
 
   const employees = useMemo(() => allEmployees.filter(u => u.organizationId === currentOrgId), [allEmployees, currentOrgId]);
@@ -344,15 +473,11 @@ function App() {
   const expenses = useMemo(() => allExpenses.filter(e => e.organizationId === currentOrgId), [allExpenses, currentOrgId]);
   const licenseKeys = useMemo(() => allLicenseKeys.filter(l => l.organizationId === currentOrgId), [allLicenseKeys, currentOrgId]);
 
-  // Update business name based on org
   useEffect(() => {
-    if (currentOrgId === 'org_coffee') setBusinessName('Zenith Coffee');
-    else if (currentOrgId === 'org_tech') setBusinessName('Tech Zone');
-    else if (currentOrgId) setBusinessName(`Shop (${currentOrgId.substring(4, 8).toUpperCase()})`);
-    else setBusinessName('Zenith POS');
+    if (currentOrgId) setBusinessName(`Shop (${currentOrgId.substring(4, 10).toUpperCase()})`);
   }, [currentOrgId]);
 
-  // --- 6. THEME ---
+  // --- THEME ---
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -361,7 +486,7 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // --- 7. HELPERS ---
+  // --- HELPERS ---
   const t = React.useCallback((key: string): string => {
       return TRANSLATIONS[language]?.[key] || key;
   }, [language]);
@@ -372,16 +497,16 @@ function App() {
       return `${config.symbol}${(amount * config.rate).toFixed(2)}`;
   }, [currency]);
 
-  // --- 8. HANDLERS & SYNC ---
-  
+  // --- HANDLERS ---
   const handleWidgetChange = (widgetId: string, isVisible: boolean) => {
     if (!currentUser) return;
     const newWidgets = { ...currentUser.dashboardWidgets, [widgetId]: isVisible };
     const updatedUser = { ...currentUser, dashboardWidgets: newWidgets };
     setCurrentUser(updatedUser);
-    localStorage.setItem('zenith_current_user', JSON.stringify(updatedUser));
-    // Update in master list
-    setAllEmployees(prev => prev.map(emp => emp.id === currentUser.id ? updatedUser : emp));
+    
+    if (!currentUser.id.startsWith('u') && isSupabaseConfigured) {
+        supabase.auth.updateUser({ data: { dashboardWidgets: newWidgets } }).catch(console.error);
+    }
   };
 
   const handleAddSale = (saleData: Omit<Sale, 'id' | 'cashier' | 'cashierId' | 'date'>) => {
@@ -397,12 +522,6 @@ function App() {
     };
     
     setAllSales(prev => [newSale, ...prev]);
-
-    if (!isOnline) {
-        console.log('Offline: Sale saved locally.');
-    } else {
-        console.log('Online: Sale would be pushed to DB.');
-    }
 
     if (dueAmount > 0 && saleData.customerId !== 'guest') {
         setAllCustomers(prev => prev.map(c => 
@@ -429,254 +548,82 @@ function App() {
 
   const handleStockAdjustment = (productId: string, newStock: number, reason: string) => {
       setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: newStock } : p));
-      // Log activity (simplified)
-      console.log(`Stock adjusted for ${productId}: ${newStock} (${reason})`);
   };
 
-  const handleToggleShift = () => {
-    if (!currentUser) return;
-    if (activeShift) {
-        const endedShift = { ...activeShift, endTime: new Date().toISOString() };
-        setActiveShift(null);
-        setNotifications(prev => [{ id: `n${Date.now()}`, title: 'Shift Ended', message: `${currentUser.name} clocked out.`, timestamp: new Date().toISOString(), read: false }, ...prev]);
-    } else {
-        const newShift: Shift = {
-            id: `shift-${Date.now()}`,
-            userId: currentUser.id,
-            userName: currentUser.name,
-            startTime: new Date().toISOString(),
-            endTime: null,
-        };
-        setActiveShift(newShift);
-        setNotifications(prev => [{ id: `n${Date.now()}`, title: 'Shift Started', message: `${currentUser.name} clocked in.`, timestamp: new Date().toISOString(), read: false }, ...prev]);
-    }
-  };
+  // --- RENDER ---
+  if (isLoadingLicense || isAuthLoading) {
+    return <div className="flex h-screen items-center justify-center dark:bg-neutral-900"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div></div>;
+  }
 
-  const renderContent = () => {
+  // 1. No Valid License? Show Gate
+  if (!activeLicense) {
+      return <LicenseGate onSuccess={handleLicenseActivation} onStartTrial={handleStartTrial} licenseDatabase={licenseDatabase} />;
+  }
+
+  // 2. No User? Show Login/Auth
+  if (!currentUser) {
+      return (
+        <Auth 
+            onLogin={handleLogin}
+            onInitiateRegister={handleInitiateRegister}
+            onInitiateForgotPassword={handleInitiateForgotPassword}
+            onVerifyEmail={(code) => console.log('Verify email', code)}
+            onVerifyResetCode={(code) => console.log('Verify reset code', code)}
+            onResetPassword={handleResetPassword}
+            error={authError}
+            onClearError={() => setAuthError(null)}
+        />
+      );
+  }
+  
+  // 3. Main App UI
+  const renderView = () => {
     if (!currentUser) return null;
+
+    const poManagementConfig = {
+      ...MANAGEMENT_CONFIG.purchases,
+      formFields: MANAGEMENT_CONFIG.purchases.formFields.map(field => {
+        if (field.key === 'supplierId') {
+          return {
+            ...field,
+            options: suppliers.map(s => ({ value: s.id, label: s.name })),
+          };
+        }
+        return field;
+      }),
+    };
 
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard 
-                  products={products} 
-                  user={currentUser}
-                  onWidgetChange={handleWidgetChange}
-                  formatCurrency={formatCurrency}
-                  t={t} 
-                />;
+        return <Dashboard products={products} sales={sales} user={currentUser} onWidgetChange={handleWidgetChange} formatCurrency={formatCurrency} t={t} activeLicense={activeLicense} licenseKeys={licenseKeys} />;
       case 'pos':
-        return <POS 
-                  user={currentUser}
-                  customers={customers}
-                  products={products}
-                  onAddSale={handleAddSale}
-                  onAddCustomer={handleAddCustomer}
-                  heldCarts={heldCarts}
-                  setHeldCarts={setHeldCarts}
-                  formatCurrency={formatCurrency}
-                  t={t}
-                  businessName={businessName}
-               />;
+        return <POS user={currentUser} customers={customers} products={products} onAddSale={handleAddSale} onAddCustomer={handleAddCustomer} heldCarts={heldCarts} setHeldCarts={setHeldCarts} formatCurrency={formatCurrency} t={t} businessName={businessName} />;
       case 'products':
-        return (
-          <React.Fragment key="products">
-            <Management<Product>
-                dataType='products'
-                data={products}
-                columns={MANAGEMENT_CONFIG.products.columns}
-                formFields={MANAGEMENT_CONFIG.products.formFields}
-                onAdd={(item) => setAllProducts(prev => [...prev, { ...item, id: `p${Date.now()}`, organizationId: currentOrgId } as Product])}
-                onUpdate={(item) => setAllProducts(prev => prev.map(p => p.id === item.id ? item : p))}
-                onDelete={(ids) => setAllProducts(prev => prev.filter(p => !ids.includes(p.id)))}
-                customActions={{ onAdjustStock: handleStockAdjustment }}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
-      case 'purchases':
-        return (
-          <React.Fragment key="purchases">
-            <Management<PurchaseOrder>
-                dataType='purchases'
-                data={purchaseOrders}
-                columns={MANAGEMENT_CONFIG.purchases.columns}
-                formFields={MANAGEMENT_CONFIG.purchases.formFields.map(f => f.key === 'supplierId' ? { ...f, options: suppliers.map(s => ({ value: s.id, label: s.name })) } : f )}
-                onAdd={(item) => {
-                    const supplier = suppliers.find(s => s.id === (item as any).supplierId);
-                    const newPO: PurchaseOrder = {
-                        ...item,
-                        id: `po${Date.now()}`,
-                        supplierName: supplier?.name || 'N/A',
-                        createdAt: new Date().toISOString(),
-                        createdBy: currentUser.name,
-                        items: [], 
-                        organizationId: currentOrgId
-                    } as PurchaseOrder;
-                    setAllPurchaseOrders(prev => [newPO, ...prev]);
-                }}
-                onUpdate={(item) => {
-                    const supplier = suppliers.find(s => s.id === (item as any).supplierId);
-                    const updatedPO = { ...item, supplierName: supplier?.name || 'N/A' };
-                    setAllPurchaseOrders(prev => prev.map(p => p.id === item.id ? updatedPO : p));
-                }}
-                onDelete={(ids) => setAllPurchaseOrders(prev => prev.filter(p => !ids.includes(p.id)))}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
-      case 'suppliers':
-        return (
-          <React.Fragment key="suppliers">
-            <Management<Supplier>
-                dataType='suppliers'
-                data={suppliers}
-                columns={MANAGEMENT_CONFIG.suppliers.columns}
-                formFields={MANAGEMENT_CONFIG.suppliers.formFields}
-                onAdd={(item) => setAllSuppliers(prev => [...prev, { ...item, id: `sup${Date.now()}`, organizationId: currentOrgId } as Supplier])}
-                onUpdate={(item) => setAllSuppliers(prev => prev.map(s => s.id === item.id ? item : s))}
-                onDelete={(ids) => setAllSuppliers(prev => prev.filter(s => !ids.includes(s.id)))}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
+        return <Management dataType="products" data={products} columns={MANAGEMENT_CONFIG.products.columns} formFields={MANAGEMENT_CONFIG.products.formFields} onAdd={(item) => setAllProducts(prev => [...prev, { ...(item as Omit<Product, 'id'>), id: `p${Date.now()}`, organizationId: currentOrgId }])} onUpdate={(item) => setAllProducts(prev => prev.map(p => p.id === item.id ? item : p))} onDelete={(ids) => setAllProducts(prev => prev.filter(p => !ids.includes(p.id)))} customActions={{ onAdjustStock: handleStockAdjustment }} t={t} formatCurrency={formatCurrency} />;
       case 'customers':
-        return (
-          <React.Fragment key="customers">
-            <Management<Customer>
-                dataType='customers'
-                data={customers}
-                columns={MANAGEMENT_CONFIG.customers.columns}
-                formFields={MANAGEMENT_CONFIG.customers.formFields}
-                onAdd={(item) => setAllCustomers(prev => [...prev, { ...item, id: `c${Date.now()}`, organizationId: currentOrgId } as Customer])}
-                onUpdate={(item) => setAllCustomers(prev => prev.map(c => c.id === item.id ? item : c))}
-                onDelete={(ids) => setAllCustomers(prev => prev.filter(c => !ids.includes(c.id)))}
-                customActions={{ onRecordPayment: handleRecordPayment }}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
+        return <Management dataType="customers" data={customers} columns={MANAGEMENT_CONFIG.customers.columns} formFields={MANAGEMENT_CONFIG.customers.formFields} onAdd={(item) => handleAddCustomer(item as Omit<Customer, 'id'>)} onUpdate={(item) => setAllCustomers(prev => prev.map(c => c.id === item.id ? item : c))} onDelete={(ids) => setAllCustomers(prev => prev.filter(c => !ids.includes(c.id)))} customActions={{ onRecordPayment: handleRecordPayment }} t={t} formatCurrency={formatCurrency} />;
       case 'employees':
-        return (
-          <React.Fragment key="employees">
-            <Management<User>
-                dataType='employees'
-                data={employees}
-                columns={MANAGEMENT_CONFIG.employees.columns}
-                formFields={MANAGEMENT_CONFIG.employees.formFields}
-                onAdd={(item) => {
-                    const newEmployee: User = {
-                        ...item,
-                        id: `u${Date.now()}`,
-                        password: '123', // Default password for new employees added by admin
-                        avatarUrl: (item as Partial<User>).avatarUrl || `https://i.pravatar.cc/150?u=${Date.now()}`,
-                        organizationId: currentOrgId
-                    } as User;
-                    setAllEmployees(prev => [...prev, newEmployee]);
-                }}
-                onUpdate={(item) => setAllEmployees(prev => prev.map(e => e.id === item.id ? item : e))}
-                onDelete={(ids) => setAllEmployees(prev => prev.filter(e => !ids.includes(e.id)))}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
-       case 'expenses':
-        return (
-          <React.Fragment key="expenses">
-            <Management<Expense>
-                dataType='expenses'
-                data={expenses}
-                columns={MANAGEMENT_CONFIG.expenses.columns}
-                formFields={MANAGEMENT_CONFIG.expenses.formFields}
-                onAdd={(item) => {
-                    const newExpense: Expense = {
-                        ...item,
-                        id: `e${Date.now()}`,
-                        recordedBy: currentUser.name,
-                        organizationId: currentOrgId
-                    } as Expense;
-                    setAllExpenses(prev => [newExpense, ...prev]);
-                }}
-                onUpdate={(item) => setAllExpenses(prev => prev.map(e => e.id === item.id ? item : e))}
-                onDelete={(ids) => setAllExpenses(prev => prev.filter(e => !ids.includes(e.id)))}
-                t={t}
-                formatCurrency={formatCurrency}
-            />
-          </React.Fragment>
-        );
+        return <Management dataType="employees" data={employees} columns={MANAGEMENT_CONFIG.employees.columns} formFields={MANAGEMENT_CONFIG.employees.formFields} onAdd={(item) => setAllEmployees(prev => [...prev, { ...(item as Omit<User, 'id'>), id: `u${Date.now()}`, organizationId: currentOrgId, dashboardWidgets: getDefaultWidgetsForRole(item.role as Role) }])} onUpdate={(item) => setAllEmployees(prev => prev.map(u => u.id === item.id ? item : u))} onDelete={(ids) => setAllEmployees(prev => prev.filter(u => !ids.includes(u.id)))} t={t} formatCurrency={formatCurrency} />;
+      case 'suppliers':
+        return <Management dataType="suppliers" data={suppliers} columns={MANAGEMENT_CONFIG.suppliers.columns} formFields={MANAGEMENT_CONFIG.suppliers.formFields} onAdd={(item) => setAllSuppliers(prev => [...prev, { ...(item as Omit<Supplier, 'id'>), id: `sup${Date.now()}`, organizationId: currentOrgId }])} onUpdate={(item) => setAllSuppliers(prev => prev.map(s => s.id === item.id ? item : s))} onDelete={(ids) => setAllSuppliers(prev => prev.filter(s => !ids.includes(s.id)))} t={t} formatCurrency={formatCurrency} />;
+      case 'purchases':
+        return <Management dataType="purchases" data={purchaseOrders} columns={poManagementConfig.columns} formFields={poManagementConfig.formFields} onAdd={(item) => setAllPurchaseOrders(prev => [...prev, { ...(item as Omit<PurchaseOrder, 'id'>), id: `po${Date.now()}`, createdBy: currentUser.name, createdAt: new Date().toISOString(), organizationId: currentOrgId }])} onUpdate={(item) => setAllPurchaseOrders(prev => prev.map(po => po.id === item.id ? item : po))} onDelete={(ids) => setAllPurchaseOrders(prev => prev.filter(po => !ids.includes(po.id)))} t={t} formatCurrency={formatCurrency} />;
+      case 'expenses':
+        return <Management dataType="expenses" data={expenses} columns={MANAGEMENT_CONFIG.expenses.columns} formFields={MANAGEMENT_CONFIG.expenses.formFields} onAdd={(item) => setAllExpenses(prev => [...prev, { ...(item as Omit<Expense, 'id'>), id: `e${Date.now()}`, recordedBy: currentUser.name, organizationId: currentOrgId }])} onUpdate={(item) => setAllExpenses(prev => prev.map(e => e.id === item.id ? item : e))} onDelete={(ids) => setAllExpenses(prev => prev.filter(e => !ids.includes(e.id)))} t={t} formatCurrency={formatCurrency} />;
       case 'reports':
         return <Reports sales={sales} users={employees} customers={customers} formatCurrency={formatCurrency} />;
       case 'settings':
-        return <Settings 
-            user={currentUser} 
-            employees={employees}
-            isDarkMode={isDarkMode} 
-            toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            businessName={businessName}
-            setBusinessName={setBusinessName}
-            businessLogo={businessLogo}
-            setBusinessLogo={setBusinessLogo}
-            licenseKeys={licenseKeys}
-            setLicenseKeys={(newKeys) => {
-                if (typeof newKeys === 'function') {
-                    setAllLicenseKeys(prev => {
-                        const currentOrgKeys = prev.filter(k => k.organizationId === currentOrgId);
-                        const otherKeys = prev.filter(k => k.organizationId !== currentOrgId);
-                        const updatedCurrent = newKeys(currentOrgKeys);
-                        return [...otherKeys, ...updatedCurrent];
-                    });
-                } else {
-                     setAllLicenseKeys(prev => {
-                        const otherKeys = prev.filter(k => k.organizationId !== currentOrgId);
-                        return [...otherKeys, ...newKeys];
-                     });
-                }
-            }}
-            language={language}
-            setLanguage={setLanguage}
-            currency={currency}
-            setCurrency={setCurrency}
-            t={t}
-        />;
+        return <Settings user={currentUser} onUpdateUser={handleUpdateCurrentUser} employees={employees} isDarkMode={isDarkMode} toggleDarkMode={() => setIsDarkMode(!isDarkMode)} businessName={businessName} setBusinessName={setBusinessName} businessLogo={businessLogo} setBusinessLogo={setBusinessLogo} licenseKeys={allLicenseKeys} setLicenseKeys={setAllLicenseKeys} language={language} setLanguage={setLanguage} currency={currency} setCurrency={setCurrency} t={t} licenseDatabase={licenseDatabase} setLicenseDatabase={setLicenseDatabase} />;
       default:
-        return <Dashboard 
-                  products={products} 
-                  user={currentUser}
-                  onWidgetChange={handleWidgetChange}
-                  formatCurrency={formatCurrency}
-                  t={t} 
-                />;
+        return <GenericView title={activeView} />;
     }
   };
 
-  if (isLoadingLicense) return null;
-
-  if (!activeLicense) {
-    return <LicenseGate onSuccess={handleLicenseActivation} onStartTrial={handleStartTrial} />;
-  }
-
-  if (!currentUser) {
-      return <Auth 
-        onLogin={handleLogin} 
-        onInitiateRegister={handleInitiateRegister} 
-        onVerifyEmail={handleVerifyEmail}
-        onInitiateForgotPassword={handleInitiateForgotPassword}
-        onVerifyResetCode={handleVerifyResetCode}
-        onResetPassword={handleResetPassword}
-        error={authError} 
-        onClearError={() => setAuthError(null)} 
-      />;
-  }
-
   return (
-    <div className="flex h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 font-sans">
+    <div className={`flex h-screen bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 antialiased ${isDarkMode ? 'dark' : ''}`}>
       <Sidebar 
         userRole={currentUser.role} 
-        activeView={activeView}
+        activeView={activeView} 
         setActiveView={setActiveView}
         isOpen={isSidebarOpen}
         setIsOpen={setSidebarOpen}
@@ -687,7 +634,7 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           user={currentUser} 
-          onLogout={handleLogout} 
+          onLogout={handleLogout}
           toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
           isDarkMode={isDarkMode}
           toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
@@ -703,20 +650,11 @@ function App() {
           t={t}
           isInTrial={isInTrial}
         />
-        
-        <button 
-            onClick={handleDeactivateLicense} 
-            className="fixed bottom-4 left-4 z-50 text-xs bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-2 py-1 rounded opacity-50 hover:opacity-100 transition-all"
-            title="Developer: Clear License"
-        >
-            Reset License
-        </button>
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">
-          {renderContent()}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-neutral-100 dark:bg-neutral-900 p-6">
+          {renderView()}
         </main>
-        <VirtualKeyboard />
       </div>
+      <VirtualKeyboard />
     </div>
   );
 }

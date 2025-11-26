@@ -1,6 +1,9 @@
 
 import React from 'react';
-import { Role, User, Product, Customer, Sale, ActivityLog, NavItem, LicenseKey, Notification, Supplier, PurchaseOrder, Expense, MasterLicense, Language, Currency, SystemSettings } from './types';
+import { Role, User, Product, Customer, Sale, ActivityLog, NavItem, LicenseKey, Notification, Supplier, PurchaseOrder, Expense, Language, Currency, SystemSettings, MasterLicense } from './types';
+
+// --- API CONFIGURATION ---
+export const API_BASE_URL = "http://localhost:5000/api"; 
 
 // --- ICONS ---
 // Using Heroicons (MIT License)
@@ -49,104 +52,93 @@ const ShoppingCartIcon: React.FC<{ className?: string }> = (props) => (
 
 const KeyIcon: React.FC<{ className?: string }> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.516.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
   </svg>
 );
 
 const ExclamationTriangleIcon: React.FC<{ className?: string }> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
-    <path fillRule="evenodd" d="M8.485 3.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 3.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+    <path fillRule="evenodd" d="M8.485 3.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 3.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0V9a.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
   </svg>
 );
 
 const TruckIcon: React.FC<{ className?: string }> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5v-1.875a3.375 3.375 0 013.375-3.375h9.75a3.375 3.375 0 013.375 3.375v1.875M3.375 14.25h17.25M6 14.25V6h12v8.25" />
-  </svg>
-);
-
-const ArchiveBoxIcon: React.FC<{ className?: string }> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-  </svg>
-);
-
-const ReceiptPercentIcon: React.FC<{ className?: string }> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-1.5h5.25m-5.25 0h3m-3 0h-1.5m3 0h.75M9 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125v-4.25m16 4.25a1.5 1.5 0 003 0m-3 0a1.5 1.5 0 01-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
   </svg>
 );
 
 const BanknotesIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
 );
 
 const TagIcon: React.FC<{ className?: string }> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.593l6.002-4.591c.828-.426.828-1.506 0-1.932l-6.002-4.591a2.02 2.02 0 00-1.607-.24L9.568 3z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
   </svg>
 );
 
-const WifiIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" />
-    </svg>
+const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+  </svg>
 );
 
-const CloudIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
-    </svg>
+const PrinterIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5zm-3 0h.008v.008H15V10.5z" />
+  </svg>
+);
+
+const GlobeAltIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+  </svg>
 );
 
 const ArrowUpTrayIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+  </svg>
 );
 
 const QrCodeIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
     </svg>
 );
 
-const PrinterIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0h9m9 0h-9m9 0a2.25 2.25 0 002.25-2.25v-7.5a2.25 2.25 0 00-2.25-2.25h-13.5a2.25 2.25 0 00-2.25 2.25v7.5a2.25 2.25 0 002.25 2.25m0 0V21h13.5v-2.25" />
-    </svg>
+const WifiIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+  </svg>
 );
 
-const GlobeAltIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
-    </svg>
-);
-
-const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-    </svg>
-);
-
-const KeyboardIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18V6ZM5.625 10.875a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM5.625 14.625a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3.375 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75ZM9 18.375a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Zm3 0a.375.375 0 1 0 0 .75.375.375 0 0 0 0-.75Z" />
-    </svg>
+const CloudIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a3.75 3.75 0 001.332-7.257 3 3 0 00-3.758-3.848 5.25 5.25 0 00-10.233 2.33A4.502 4.502 0 002.25 15z" />
+  </svg>
 );
 
 const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" />
-    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" /></svg>
 );
 
 const ShieldCheckIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" /></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" />
+  </svg>
 );
 
+const XMarkIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+);
 
 export const ICONS = {
     ChartBarIcon,
@@ -159,583 +151,392 @@ export const ICONS = {
     KeyIcon,
     ExclamationTriangleIcon,
     TruckIcon,
-    ArchiveBoxIcon,
-    ReceiptPercentIcon,
     BanknotesIcon,
     TagIcon,
-    WifiIcon,
-    CloudIcon,
-    ArrowUpTrayIcon,
-    QrCodeIcon,
+    ChatBubbleLeftRightIcon,
     PrinterIcon,
     GlobeAltIcon,
-    ChatBubbleLeftRightIcon,
-    KeyboardIcon,
+    ArrowUpTrayIcon,
+    QrCodeIcon,
+    WifiIcon,
+    CloudIcon,
     BuildingStorefrontIcon,
-    ShieldCheckIcon
+    ShieldCheckIcon,
+    XMarkIcon
 };
 
-// --- TRANSLATIONS & CURRENCY ---
+// --- CONFIGURATION ---
 
-export const CURRENCIES: Record<Currency, { symbol: string; rate: number }> = {
-    'USD': { symbol: '$', rate: 1 },
-    'BDT': { symbol: '৳', rate: 120 },
-    'EUR': { symbol: '€', rate: 0.92 },
-    'INR': { symbol: '₹', rate: 83 },
-};
+export const LOYALTY_CONVERSION_RATE = 0.01; // $0.01 discount per point
+export const TRIAL_DURATION_DAYS = 7;
 
-export const TRANSLATIONS: Record<Language, Record<string, string>> = {
-    'en': {
-        'Dashboard': 'Dashboard',
-        'POS': 'POS',
-        'Products': 'Products',
-        'Purchases': 'Purchases',
-        'Suppliers': 'Suppliers',
-        'Customers': 'Customers',
-        'Employees': 'Employees',
-        'Expenses': 'Expenses',
-        'Reports': 'Reports',
-        'Settings': 'Settings',
-        'Search': 'Search...',
-        'Add New': 'Add New',
-        'Import CSV': 'Import CSV',
-        'Print Labels': 'Print Labels',
-        'Total Revenue': 'Total Revenue',
-        'New Customers': 'New Customers',
-        'Products Sold': 'Products Sold',
-        'Todays Transactions': "Today's Transactions",
-        'Sales Overview': 'Sales Overview',
-        'Top Selling Products': 'Top Selling Products',
-        'Low Stock Alerts': 'Low Stock Alerts',
-        'AI-Powered Insights': 'AI-Powered Insights',
-        'Online': 'Online',
-        'Offline': 'Offline',
-        'Clock In': 'Clock In',
-        'Clock Out': 'Clock Out',
-        'Shift Started': 'Shift Started',
-        'Current Order': 'Current Order',
-        'Held Orders': 'Held Orders',
-        'Hold': 'Hold',
-        'Charge': 'Charge',
-        'Clear Cart': 'Clear Cart',
-        'Subtotal': 'Subtotal',
-        'Tax': 'Tax',
-        'Total': 'Total',
-        'Print Receipt': 'Print Receipt',
-        'Payment Success': 'Payment Successful',
-        'WhatsApp Invoice': 'WhatsApp Invoice',
-        'Out of Stock': 'Out of Stock',
-        'Stock Limit Exceeded': 'Cannot add more. Stock limit reached.',
-    },
-    'bn': {
-        'Dashboard': 'ড্যাশবোর্ড',
-        'POS': 'বিক্রয় (POS)',
-        'Products': 'পণ্য তালিকা',
-        'Purchases': 'ক্রয়',
-        'Suppliers': 'সরবরাহকারী',
-        'Customers': 'গ্রাহক',
-        'Employees': 'কর্মচারী',
-        'Expenses': 'খরচ',
-        'Reports': 'রিপোর্ট',
-        'Settings': 'সেটিংস',
-        'Search': 'অনুসন্ধান...',
-        'Add New': 'নতুন যোগ করুন',
-        'Import CSV': 'ইম্পোর্ট CSV',
-        'Print Labels': 'লেবেল প্রিন্ট',
-        'Total Revenue': 'মোট আয়',
-        'New Customers': 'নতুন গ্রাহক',
-        'Products Sold': 'বিক্রিত পণ্য',
-        'Todays Transactions': 'আজকের লেনদেন',
-        'Sales Overview': 'বিক্রয় চিত্র',
-        'Top Selling Products': 'সেরা বিক্রিত পণ্য',
-        'Low Stock Alerts': 'স্টক সতর্কতা',
-        'AI-Powered Insights': 'এআই ইনসাইটস',
-        'Online': 'অনলাইন',
-        'Offline': 'অফলাইন',
-        'Clock In': 'শিফট শুরু',
-        'Clock Out': 'শিফট শেষ',
-        'Shift Started': 'শিফট চলছে',
-        'Current Order': 'বর্তমান অর্ডার',
-        'Held Orders': 'হোল্ড অর্ডার',
-        'Hold': 'হোল্ড',
-        'Charge': 'বিল করুন',
-        'Clear Cart': 'খালি করুন',
-        'Subtotal': 'সাব-টোটাল',
-        'Tax': 'ভ্যাট/ট্যাক্স',
-        'Total': 'সর্বমোট',
-        'Print Receipt': 'রিসিট প্রিন্ট',
-        'Payment Success': 'পেমেন্ট সফল হয়েছে',
-        'WhatsApp Invoice': 'হোয়াটসঅ্যাপ ইনভয়েস',
-        'Out of Stock': 'স্টক শেষ',
-        'Stock Limit Exceeded': 'স্টক এর চেয়ে বেশি পণ্য যোগ করা যাবে না',
+export const getDefaultWidgetsForRole = (role: Role) => {
+    if (role === Role.Admin) {
+        return {
+            totalRevenue: true,
+            newCustomers: true,
+            productsSold: true,
+            todaysTransactions: true,
+            salesOverview: true,
+            topProducts: true,
+            recentActivity: true,
+            lowStockAlerts: true,
+            aiInsights: true,
+            licenseActivations: true
+        };
     }
-};
-
-export const DEFAULT_SETTINGS: SystemSettings = {
-    language: 'en',
-    currency: 'USD',
-    taxRate: 8,
+    if (role === Role.Manager) {
+        return {
+            totalRevenue: true,
+            productsSold: true,
+            salesOverview: true,
+            topProducts: true,
+            lowStockAlerts: true,
+            aiInsights: true
+        };
+    }
+    if (role === Role.Cashier) {
+        return {
+            todaysTransactions: true,
+            productsSold: true,
+            lowStockAlerts: true
+        };
+    }
+    return {};
 };
 
 // --- NAVIGATION ---
-
 export const NAV_ITEMS: NavItem[] = [
-  { name: 'Dashboard', path: 'dashboard', icon: ChartBarIcon, roles: [Role.Admin, Role.Manager, Role.Viewer] },
-  { name: 'POS', path: 'pos', icon: ShoppingCartIcon, roles: [Role.Cashier, Role.Admin, Role.Manager] },
+  { name: 'Dashboard', path: 'dashboard', icon: ChartBarIcon, roles: [Role.Admin, Role.Manager, Role.Cashier, Role.Viewer] },
+  { name: 'Point of Sale', path: 'pos', icon: ShoppingCartIcon, roles: [Role.Admin, Role.Manager, Role.Cashier] },
   { name: 'Products', path: 'products', icon: CubeIcon, roles: [Role.Admin, Role.Manager] },
-  { name: 'Purchases', path: 'purchases', icon: ArchiveBoxIcon, roles: [Role.Admin, Role.Manager] },
-  { name: 'Suppliers', path: 'suppliers', icon: TruckIcon, roles: [Role.Admin, Role.Manager] },
   { name: 'Customers', path: 'customers', icon: UserGroupIcon, roles: [Role.Admin, Role.Manager, Role.Cashier] },
   { name: 'Employees', path: 'employees', icon: UsersIcon, roles: [Role.Admin] },
-  { name: 'Expenses', path: 'expenses', icon: ReceiptPercentIcon, roles: [Role.Admin, Role.Manager] },
-  { name: 'Reports', path: 'reports', icon: DocumentChartBarIcon, roles: [Role.Admin, Role.Manager, Role.Viewer] },
-  { name: 'Settings', path: 'settings', icon: Cog6ToothIcon, roles: [Role.Admin] },
+  { name: 'Suppliers', path: 'suppliers', icon: TruckIcon, roles: [Role.Admin, Role.Manager] },
+  { name: 'Purchases', path: 'purchases', icon: DocumentChartBarIcon, roles: [Role.Admin, Role.Manager] },
+  { name: 'Expenses', path: 'expenses', icon: BanknotesIcon, roles: [Role.Admin, Role.Manager] },
+  { name: 'Reports', path: 'reports', icon: DocumentChartBarIcon, roles: [Role.Admin, Role.Manager] },
+  { name: 'Settings', path: 'settings', icon: Cog6ToothIcon, roles: [Role.Admin, Role.Manager, Role.Cashier, Role.Viewer] },
 ];
 
-// --- DASHBOARD WIDGETS CONFIG ---
 export const WIDGETS_CONFIG = [
-    { id: 'totalRevenue', name: 'Total Revenue', roles: [Role.Admin] },
-    { id: 'newCustomers', name: 'New Customers', roles: [Role.Admin, Role.Manager] },
-    { id: 'productsSold', name: 'Products Sold', roles: [Role.Admin, Role.Manager, Role.Viewer] },
-    { id: 'todaysTransactions', name: 'Today\'s Transactions', roles: [Role.Admin, Role.Manager, Role.Viewer] },
-    { id: 'salesOverview', name: 'Sales Overview', roles: [Role.Admin, Role.Manager, Role.Viewer] },
-    { id: 'topProducts', name: 'Top Selling Products', roles: [Role.Admin, Role.Manager, Role.Viewer] },
-    { id: 'recentActivity', name: 'Recent Activity', roles: [Role.Admin, Role.Manager] },
-    { id: 'lowStockAlerts', name: 'Low Stock Alerts', roles: [Role.Admin, Role.Manager] },
-    { id: 'aiInsights', name: 'AI-Powered Insights', roles: [Role.Admin, Role.Manager] },
+    { id: 'totalRevenue', name: 'Total Revenue' },
+    { id: 'newCustomers', name: 'New Customers' },
+    { id: 'productsSold', name: 'Products Sold' },
+    { id: 'todaysTransactions', name: 'Todays Transactions' },
+    { id: 'salesOverview', name: 'Sales Overview' },
+    { id: 'topProducts', name: 'Top Products' },
+    { id: 'recentActivity', name: 'Recent Activity' },
+    { id: 'lowStockAlerts', name: 'Low Stock Alerts' },
+    { id: 'aiInsights', name: 'AI-Powered Insights' },
+    { id: 'licenseActivations', name: 'License Activations' }
 ];
-
-export const getDefaultWidgetsForRole = (role: Role): Record<string, boolean> => {
-    const widgets: Record<string, boolean> = {};
-    WIDGETS_CONFIG.forEach(widget => {
-        widgets[widget.id] = widget.roles.includes(role);
-    });
-    return widgets;
-};
-
 
 // --- MOCK DATA ---
 
-export const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', title: 'Low Stock Warning', message: 'Espresso is running low. Only 20 units left.', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), read: false, link: 'products' },
-  { id: 'n2', title: 'New Sale', message: 'Sale #S1025 of $45.50 completed by David Smith.', timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), read: false, link: 'reports' },
-  { id: 'n3', title: 'System Update', message: 'Scheduled maintenance this Sunday at 2 AM.', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), read: true },
-  { id: 'n4', title: 'Weekly Report Ready', message: 'Your weekly sales summary is available.', timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: true, link: 'reports' },
-];
-
-// --- LICENSE VERIFICATION LOGIC ---
-
-export const LICENSE_VERIFICATION_SECRET = "ZENITH_POS_SECRET_KEY_2025"; // Shared secret for signature generation
-
-// Simple hash function for signature (Simple custom hash for demo purposes)
-const generateSignature = (data: string, secret: string) => {
-    const text = data + secret;
-    let hash = 0, i, chr;
-    if (text.length === 0) return hash.toString();
-    for (i = 0; i < text.length; i++) {
-      chr = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + chr;
-      hash |= 0; // Convert to 32bit integer
-    }
-    // Convert to hex and take last 4 chars, ensure positive and padded
-    return Math.abs(hash).toString(16).substring(0, 4).toUpperCase().padStart(4, '0');
-};
-
-export const validateLicenseKey = (key: string, businessName?: string): { valid: boolean; license?: MasterLicense; error?: string } => {
-    // Check for hardcoded keys first (Backward compatibility/Demo)
-    if (key === 'ZENITH-SUPER-2025-DEMO') {
-         return {
-             valid: true,
-             license: {
-                 key: key,
-                 organizationId: 'org_coffee',
-                 validUntil: '2025-12-31T23:59:59Z',
-                 planType: 'Enterprise',
-                 status: 'Active',
-                 maxShops: Infinity
-             }
-         };
-    }
-    if (key === 'ZENITH-TECH-2025-DEMO') {
-         return {
-             valid: true,
-             license: {
-                 key: key,
-                 organizationId: 'org_tech',
-                 validUntil: '2025-12-31T23:59:59Z',
-                 planType: 'Premium',
-                 status: 'Active',
-                 maxShops: 1
-             }
-         };
-    }
-
-    const parts = key.trim().toUpperCase().split('-');
-    
-    // Check for OLD format: ZENITH-SERIAL-YEAR-SIG (4 parts)
-    // Check for NEW format: ZENITH-TYPE-SERIAL-YEAR-SIG (5 parts)
-    
-    if (parts.length < 4 || parts[0] !== 'ZENITH') {
-        return { valid: false, error: "Invalid key format." };
-    }
-
-    let type = 'SINGLE'; // Default for old keys
-    let serial = '';
-    let year = '';
-    let signature = '';
-    let dataToSignBase = '';
-
-    if (parts.length === 5) {
-        // NEW FORMAT: ZENITH-TYPE-SERIAL-YEAR-SIG
-        [, type, serial, year, signature] = parts;
-        dataToSignBase = `${parts[0]}-${type}-${serial}-${year}`;
-    } else {
-        // OLD FORMAT: ZENITH-SERIAL-YEAR-SIG
-        [, serial, year, signature] = parts;
-        dataToSignBase = `${parts[0]}-${serial}-${year}`;
-    }
-    
-    // Validation logic (Strict Name Binding vs Generic)
-    let isValidSignature = false;
-
-    // Method 1: Check with Business Name (Strict)
-    let dataToSignStrict = dataToSignBase;
-    if (businessName) {
-         const cleanName = businessName.trim().toUpperCase().replace(/\s+/g, '');
-         dataToSignStrict += `-${cleanName}`;
-    }
-    
-    if (generateSignature(dataToSignStrict, LICENSE_VERIFICATION_SECRET) === signature) {
-        isValidSignature = true;
-    }
-
-    // Method 2: Check Generic (without name) if strict failed
-    if (!isValidSignature) {
-        if (generateSignature(dataToSignBase, LICENSE_VERIFICATION_SECRET) === signature) {
-            isValidSignature = true;
-        }
-    }
-
-    if (!isValidSignature) {
-        return { valid: false, error: "Invalid license signature." };
-    }
-
-    // Check Expiry
-    const currentYear = new Date().getFullYear();
-    if (parseInt(year) < currentYear) {
-        return { valid: false, error: "License key has expired." };
-    }
-
-    // Map Type to Plan
-    const isMultiShop = type === 'MULTI';
-    const planType = isMultiShop ? 'Enterprise' : 'Premium';
-
-    return {
-        valid: true,
-        license: {
-            key: key,
-            organizationId: `org_${serial.toLowerCase().replace(/[^a-z0-9]/g, '')}`, // Auto-generate org ID from serial
-            validUntil: `${year}-12-31T23:59:59Z`,
-            planType: planType,
-            status: 'Active',
-            maxShops: isMultiShop ? Infinity : 1
-        }
-    };
-};
-
-// Used by LicenseGate.tsx to maintain compatibility with existing Mock array import
-export const MOCK_MASTER_LICENSES: MasterLicense[] = [
-  // These are kept for reference, but logic now uses validateLicenseKey
-  { key: 'ZENITH-SUPER-2025-DEMO', organizationId: 'org_coffee', validUntil: '2025-12-31T23:59:59Z', planType: 'Enterprise', status: 'Active', maxShops: Infinity },
-  { key: 'ZENITH-TECH-2025-DEMO', organizationId: 'org_tech', validUntil: '2025-12-31T23:59:59Z', planType: 'Premium', status: 'Active', maxShops: 1 },
-];
-
-
 export const MOCK_USERS: User[] = [
-  // Organization 1: Zenith Coffee
-  { id: 'u1', name: 'Alex Johnson', email: 'admin1@zenith.com', password: '123', role: Role.Admin, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin), isVerified: true },
-  { id: 'u2', name: 'Maria Garcia', email: 'manager@zenith.com', password: '123', role: Role.Manager, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', dashboardWidgets: getDefaultWidgetsForRole(Role.Manager), isVerified: true },
-  { id: 'u3', name: 'David Smith', email: 'cashier@zenith.com', password: '123', role: Role.Cashier, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier), isVerified: true },
-  
-  // Organization 2: Tech Zone
-  { id: 'u4', name: 'Michael Chen', email: 'admin2@techzone.com', password: '123', role: Role.Admin, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026709d', dashboardWidgets: getDefaultWidgetsForRole(Role.Admin), isVerified: true },
-  { id: 'u5', name: 'John Doe', email: 'cashier@techzone.com', password: '123', role: Role.Cashier, organizationId: 'org_tech', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026708d', dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier), isVerified: true },
-  
-  // Viewer for Org 1
-  { id: 'u6', name: 'Sarah Wilson', email: 'viewer@zenith.com', password: '123', role: Role.Viewer, organizationId: 'org_coffee', avatarUrl: 'https://i.pravatar.cc/150?u=a042581f4e29026707d', dashboardWidgets: getDefaultWidgetsForRole(Role.Viewer), isVerified: true },
+  { 
+    id: 'u1', 
+    name: 'Super Admin', 
+    email: 'superadmin@zenith.com', 
+    password: 'superadmin123!', 
+    role: Role.Admin, 
+    avatarUrl: 'https://i.pravatar.cc/150?u=u1',
+    dashboardWidgets: getDefaultWidgetsForRole(Role.Admin),
+    organizationId: 'org_admin'
+  },
+  { 
+    id: 'u2', 
+    name: 'Jane Smith', 
+    email: 'manager@zenith.com', 
+    password: '123', 
+    role: Role.Manager, 
+    avatarUrl: 'https://i.pravatar.cc/150?u=u2',
+    dashboardWidgets: getDefaultWidgetsForRole(Role.Manager),
+    organizationId: 'org_tech'
+  },
+  { 
+    id: 'u3', 
+    name: 'Bob Jones', 
+    email: 'cashier@zenith.com', 
+    password: '123', 
+    role: Role.Cashier, 
+    avatarUrl: 'https://i.pravatar.cc/150?u=u3',
+    dashboardWidgets: getDefaultWidgetsForRole(Role.Cashier),
+    organizationId: 'org_tech'
+  }
 ];
 
 export const MOCK_PRODUCTS: Product[] = [
-  // Zenith Coffee Products (org_coffee)
-  { id: 'p1', organizationId: 'org_coffee', name: 'Espresso', category: 'Coffee', price: 2.50, stock: 20, sku: 'COF-ESP-01', brand: 'Zenith Beans', unit: 'pcs', lowStockThreshold: 25, expiryDate: '2025-12-31', imageUrl: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=100&q=80' },
-  { id: 'p2', organizationId: 'org_coffee', name: 'Latte', category: 'Coffee', price: 3.50, stock: 120, sku: 'COF-LAT-01', brand: 'Zenith Beans', unit: 'pcs', lowStockThreshold: 50, expiryDate: '2025-12-31', imageUrl: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=100&q=80' },
-  { id: 'p3', organizationId: 'org_coffee', name: 'Croissant', category: 'Pastry', price: 2.75, stock: 15, sku: 'PAS-CRO-01', brand: 'Paris Pastries', unit: 'pcs', lowStockThreshold: 20, expiryDate: '2024-08-10', imageUrl: 'https://images.unsplash.com/photo-1530982523992-9385556a1b9c?auto=format&fit=crop&w=100&q=80' },
-  { id: 'p4', organizationId: 'org_coffee', name: 'Muffin', category: 'Pastry', price: 3.00, stock: 75, sku: 'PAS-MUF-01', brand: 'Paris Pastries', unit: 'pcs', lowStockThreshold: 20, expiryDate: '2024-08-12', imageUrl: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=100&q=80' },
-  { id: 'p5', organizationId: 'org_coffee', name: 'Orange Juice', category: 'Beverage', price: 4.00, stock: 90, sku: 'BEV-OJ-01', brand: 'Fresh Squeeze', unit: 'btl', lowStockThreshold: 30, expiryDate: '2024-09-01', imageUrl: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=100&q=80' },
-  
-  // Tech Zone Products (org_tech)
-  { id: 'tp1', organizationId: 'org_tech', name: 'USB-C Cable', category: 'Accessories', price: 12.99, stock: 50, sku: 'ACC-USB-01', brand: 'TechLink', unit: 'pcs', lowStockThreshold: 10, imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=100&q=80' },
-  { id: 'tp2', organizationId: 'org_tech', name: 'Wireless Mouse', category: 'Peripherals', price: 24.99, stock: 30, sku: 'PER-MSE-01', brand: 'LogiTech', unit: 'pcs', lowStockThreshold: 5, imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?auto=format&fit=crop&w=100&q=80' },
-  { id: 'tp3', organizationId: 'org_tech', name: 'Mechanical Keyboard', category: 'Peripherals', price: 89.99, stock: 15, sku: 'PER-KBD-01', brand: 'KeyChron', unit: 'pcs', lowStockThreshold: 5, imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b91add1?auto=format&fit=crop&w=100&q=80' },
-  { id: 'tp4', organizationId: 'org_tech', name: 'Screen Protector', category: 'Accessories', price: 9.99, stock: 100, sku: 'ACC-SCR-01', brand: 'GlassGuard', unit: 'pcs', lowStockThreshold: 20, imageUrl: 'https://images.unsplash.com/photo-1605236453806-6ff36851218e?auto=format&fit=crop&w=100&q=80' },
+  { id: 'p1', name: 'Wireless Headphones', category: 'Electronics', price: 99.99, stock: 45, sku: 'WH-001', imageUrl: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&q=80', organizationId: 'org_tech', lowStockThreshold: 10 },
+  { id: 'p2', name: 'Smartphone Stand', category: 'Accessories', price: 19.99, stock: 120, sku: 'SS-002', imageUrl: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=200&q=80', organizationId: 'org_tech', lowStockThreshold: 20 },
+  { id: 'p3', name: 'Mechanical Keyboard', category: 'Electronics', price: 149.50, stock: 8, sku: 'MK-003', imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b91a603?w=200&q=80', organizationId: 'org_tech', lowStockThreshold: 5 },
+  { id: 'p4', name: 'USB-C Cable', category: 'Accessories', price: 9.99, stock: 200, sku: 'UC-004', organizationId: 'org_tech', lowStockThreshold: 50 },
+  { id: 'p5', name: 'Espresso Blend', category: 'Coffee', price: 15.00, stock: 50, sku: 'CF-001', organizationId: 'org_coffee', lowStockThreshold: 10 },
+  { id: 'p6', name: 'Cappuccino', category: 'Beverage', price: 4.50, stock: 500, sku: 'BV-001', organizationId: 'org_coffee' }
 ];
 
 export const MOCK_CUSTOMERS: Customer[] = [
-  // Zenith Coffee Customers
-  { id: 'c1', organizationId: 'org_coffee', name: 'Emily Carter', phone: '555-0101', email: 'emily.c@example.com', loyaltyPoints: 1250, dueAmount: 0, creditLimit: 500 },
-  { id: 'c2', organizationId: 'org_coffee', name: 'Benjamin Hayes', phone: '555-0102', email: 'ben.h@example.com', loyaltyPoints: 850, dueAmount: 25.50, creditLimit: 200 },
-  
-  // Tech Zone Customers
-  { id: 'tc1', organizationId: 'org_tech', name: 'Geeky Steve', phone: '555-9901', email: 'steve@tech.com', loyaltyPoints: 500, dueAmount: 120.00, creditLimit: 1000 },
-  { id: 'tc2', organizationId: 'org_tech', name: 'Alice Coder', phone: '555-9902', email: 'alice@code.com', loyaltyPoints: 2000, dueAmount: 0, creditLimit: 2000 },
+  { id: 'c1', name: 'Alice Johnson', phone: '555-0101', email: 'alice@example.com', loyaltyPoints: 150, dueAmount: 0, organizationId: 'org_tech', creditLimit: 500 },
+  { id: 'c2', name: 'Michael Brown', phone: '555-0102', email: 'michael@example.com', loyaltyPoints: 40, dueAmount: 50.00, organizationId: 'org_tech', creditLimit: 200 },
+  { id: 'c3', name: 'Coffee Lover', phone: '555-0201', email: 'coffee@example.com', loyaltyPoints: 200, dueAmount: 0, organizationId: 'org_coffee' }
 ];
 
 export const MOCK_SUPPLIERS: Supplier[] = [
-    // Zenith Coffee Suppliers
-    { id: 'sup1', organizationId: 'org_coffee', name: 'Zenith Beans Co.', contactPerson: 'John Bean', phone: '555-0201', email: 'sales@zenithbeans.com' },
-    
-    // Tech Zone Suppliers
-    { id: 'sup2', organizationId: 'org_tech', name: 'Global Electronics', contactPerson: 'Mr. Circuit', phone: '555-0999', email: 'orders@globalelec.com' },
+    { id: 'sup1', name: 'Tech Distro Inc.', contactPerson: 'John Sales', phone: '555-9999', email: 'sales@techdistro.com', organizationId: 'org_tech' },
+    { id: 'sup2', name: 'Global Gadgets', contactPerson: 'Sarah Supply', phone: '555-8888', email: 'sarah@globalgadgets.com', organizationId: 'org_tech' },
+    { id: 'sup3', name: 'Bean Farmers Co.', contactPerson: 'Juan Valdez', phone: '555-7777', email: 'juan@beans.com', organizationId: 'org_coffee' }
 ];
 
 export const MOCK_PURCHASE_ORDERS: PurchaseOrder[] = [
-    // Zenith Coffee POs
-    {
-        id: 'po1',
-        organizationId: 'org_coffee',
-        supplierId: 'sup1',
-        supplierName: 'Zenith Beans Co.',
-        status: 'Completed',
-        items: [
-            { productId: 'p1', productName: 'Espresso', quantity: 100, cost: 1.50 },
-        ],
-        total: 150.00,
-        createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
-        createdBy: 'Maria Garcia',
-    },
-    // Tech Zone POs
-    {
-        id: 'po2',
-        organizationId: 'org_tech',
-        supplierId: 'sup2',
-        supplierName: 'Global Electronics',
-        status: 'Pending',
-        items: [
-            { productId: 'tp1', productName: 'USB-C Cable', quantity: 200, cost: 5.00 },
-        ],
-        total: 1000.00,
-        createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
-        createdBy: 'Michael Chen',
-    },
+    { 
+        id: 'po1', 
+        supplierId: 'sup1', 
+        supplierName: 'Tech Distro Inc.', 
+        status: 'Completed', 
+        items: [{ productId: 'p1', productName: 'Wireless Headphones', quantity: 10, cost: 500 }], 
+        total: 500, 
+        createdAt: '2023-10-25T10:00:00Z', 
+        createdBy: 'Admin', 
+        organizationId: 'org_tech' 
+    }
 ];
 
 export const MOCK_EXPENSES: Expense[] = [
-    // Zenith Coffee Expenses
-    { id: 'e1', organizationId: 'org_coffee', category: 'Rent', description: 'Shop Rent', amount: 2500, date: new Date(Date.now() - 86400000 * 20).toISOString(), recordedBy: 'Alex Johnson' },
-    
-    // Tech Zone Expenses
-    { id: 'e2', organizationId: 'org_tech', category: 'Rent', description: 'Tech Store Rent', amount: 4000, date: new Date(Date.now() - 86400000 * 20).toISOString(), recordedBy: 'Michael Chen' },
+    { id: 'e1', category: 'Rent', description: 'Monthly shop rent', amount: 1500, date: '2023-11-01T09:00:00Z', recordedBy: 'Admin', organizationId: 'org_tech' },
+    { id: 'e2', category: 'Utilities', description: 'Electric bill', amount: 200, date: '2023-11-05T14:30:00Z', recordedBy: 'Manager', organizationId: 'org_tech' }
 ];
 
 export const MOCK_SALES_DATA: Sale[] = [
-    // Zenith Coffee Sales
-    { id: 's1', organizationId: 'org_coffee', date: new Date(Date.now() - 86400000 * 2).toISOString(), total: 125.50, cashier: 'David Smith', cashierId: 'u3', items: 15, customerId: 'c1', customerName: 'Emily Carter', amountPaid: 125.50, paymentMethod: 'Card' },
-    
-    // Tech Zone Sales
-    { id: 's2', organizationId: 'org_tech', date: new Date(Date.now() - 86400000 * 1).toISOString(), total: 89.99, cashier: 'John Doe', cashierId: 'u5', items: 1, customerId: 'tc1', customerName: 'Geeky Steve', amountPaid: 89.99, paymentMethod: 'Card' },
-];
-
-export const MOCK_LICENSE_KEYS: LicenseKey[] = [
-  { 
-    id: 'lk1', 
-    organizationId: 'org_coffee',
-    key: 'ZENITH-COFF-EE01-1234', 
-    assignedToUserId: 'u3', 
-    assignedToUserName: 'David Smith', 
-    status: 'Active', 
-    validity: 'Lifetime', 
-    deviceName: 'Counter PC' 
-  },
-  { 
-    id: 'lk2', 
-    organizationId: 'org_tech',
-    key: 'ZENITH-TECH-ZONE-5678', 
-    assignedToUserId: 'u5', 
-    assignedToUserName: 'John Doe', 
-    status: 'Active', 
-    validity: 'Lifetime', 
-    deviceName: 'Main Register' 
-  },
-];
-
-export const MOCK_ACTIVITY_LOGS: ActivityLog[] = [
-    { id: 'a1', user: 'Alex Johnson', action: 'Logged in', timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-    { id: 'a2', user: 'Michael Chen', action: 'Logged in', timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString() },
+  { id: 's1001', date: '2023-11-20T10:30:00', total: 119.98, cashier: 'Bob Jones', cashierId: 'u3', items: 2, customerId: 'c1', customerName: 'Alice Johnson', amountPaid: 119.98, paymentMethod: 'Card', organizationId: 'org_tech' },
+  { id: 's1002', date: '2023-11-20T11:15:00', total: 19.99, cashier: 'Bob Jones', cashierId: 'u3', items: 1, customerId: 'guest', customerName: 'Guest', amountPaid: 20.00, paymentMethod: 'Cash', organizationId: 'org_tech' },
+  { id: 's1003', date: '2023-11-21T09:45:00', total: 299.00, cashier: 'Jane Smith', cashierId: 'u2', items: 2, customerId: 'c2', customerName: 'Michael Brown', amountPaid: 299.00, paymentMethod: 'Credit', organizationId: 'org_tech' },
+  { id: 's1004', date: '2023-11-21T14:20:00', total: 9.99, cashier: 'Bob Jones', cashierId: 'u3', items: 1, customerId: 'guest', customerName: 'Guest', amountPaid: 9.99, paymentMethod: 'Cash', organizationId: 'org_tech' },
+  { id: 's1005', date: '2023-11-22T16:00:00', total: 15.00, cashier: 'Barista', cashierId: 'u4', items: 1, customerId: 'c3', customerName: 'Coffee Lover', amountPaid: 15.00, paymentMethod: 'Cash', organizationId: 'org_coffee' }
 ];
 
 export const MOCK_SALES_CHART_DATA = [
-    { name: 'Mon', sales: 4000 },
-    { name: 'Tue', sales: 3000 },
-    { name: 'Wed', sales: 2000 },
-    { name: 'Thu', sales: 2780 },
-    { name: 'Fri', sales: 1890 },
-    { name: 'Sat', sales: 2390 },
-    { name: 'Sun', sales: 3490 },
+  { name: 'Mon', sales: 4000 },
+  { name: 'Tue', sales: 3000 },
+  { name: 'Wed', sales: 2000 },
+  { name: 'Thu', sales: 2780 },
+  { name: 'Fri', sales: 1890 },
+  { name: 'Sat', sales: 2390 },
+  { name: 'Sun', sales: 3490 },
 ];
 
 export const MOCK_TOP_PRODUCTS_DATA = [
-    { name: 'Latte', value: 400 },
-    { name: 'Espresso', value: 300 },
-    { name: 'Croissant', value: 300 },
-    { name: 'Orange Juice', value: 200 },
+  { name: 'Headphones', value: 400 },
+  { name: 'Phone Stand', value: 300 },
+  { name: 'Keyboard', value: 300 },
+  { name: 'USB Cable', value: 200 },
 ];
 
+export const MOCK_ACTIVITY_LOGS: ActivityLog[] = [
+  { id: 'l1', user: 'Admin', action: 'Updated inventory for "Headphones"', timestamp: '2023-11-21T10:00:00' },
+  { id: 'l2', user: 'Jane Smith', action: 'Processed refund for Order #s1003', timestamp: '2023-11-21T11:30:00' },
+  { id: 'l3', user: 'Bob Jones', action: 'Logged in', timestamp: '2023-11-22T08:55:00' },
+];
 
-// --- MANAGEMENT COMPONENT CONFIG ---
+export const MOCK_LICENSE_KEYS: LicenseKey[] = [
+  { id: 'lk1', key: 'DEV-001', assignedToUserId: 'u2', assignedToUserName: 'Jane Smith', status: 'Active', validity: 'Lifetime', deviceName: 'Counter 1', organizationId: 'org_tech' },
+  { id: 'lk2', key: 'DEV-002', assignedToUserId: 'u3', assignedToUserName: 'Bob Jones', status: 'Active', validity: '2024-12-31', deviceName: 'Counter 2', organizationId: 'org_tech' },
+  { id: 'lk3', key: 'DEV-003', assignedToUserId: 'u4', assignedToUserName: 'Barista', status: 'Active', validity: 'Lifetime', deviceName: 'Main Register', organizationId: 'org_coffee' }
+];
+
+export const MOCK_NOTIFICATIONS: Notification[] = [
+    { id: 'n1', title: 'Low Stock Alert', message: 'Wireless Headphones stock is below 10.', timestamp: '2023-11-22T09:00:00Z', read: false, link: 'products' },
+    { id: 'n2', title: 'New Update', message: 'Zenith POS v2.0 is now available.', timestamp: '2023-11-21T10:00:00Z', read: true },
+    { id: 'n3', title: 'Daily Report', message: 'Yesterday\'s sales report is ready.', timestamp: '2023-11-21T08:00:00Z', read: false, link: 'reports' }
+];
+
+// --- MANAGEMENT TABLE CONFIG ---
 
 export interface ManagementColumn<T> {
     key: keyof T;
     header: string;
     render?: (item: T) => React.ReactNode;
 }
-  
+
 export interface ManagementFormField<T> {
     key: keyof T;
     label: string;
-    type: 'text' | 'number' | 'email' | 'select' | 'image' | 'date';
+    type: 'text' | 'number' | 'email' | 'select' | 'image';
+    options?: { value: string, label: string }[];
     required?: boolean;
-    options?: { value: string; label: string }[];
 }
 
 export const MANAGEMENT_CONFIG = {
     products: {
-      columns: [
-        { key: 'name', header: 'Name' },
-        { key: 'category', header: 'Category' },
-        { key: 'brand', header: 'Brand' },
-        { key: 'price', header: 'Price', render: (item: Product) => `$${item.price.toFixed(2)}` },
-        { 
-          key: 'stock', 
-          header: 'Stock Level',
-          render: (item: Product) => (
-            <div className="flex items-center gap-2">
-              <span>{item.stock} {item.unit || ''}</span>
-              {typeof item.lowStockThreshold !== 'undefined' && item.stock <= item.lowStockThreshold && (
-                <span title={`Low stock threshold: ${item.lowStockThreshold}`}>
-                  <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />
+        columns: [
+            { key: 'name', header: 'Name', render: (p: Product) => (
+                <div className="flex items-center gap-3">
+                    {p.imageUrl && <img src={p.imageUrl} alt="" className="w-8 h-8 rounded object-cover" />}
+                    <div>
+                        <div className="font-bold text-neutral-800 dark:text-neutral-200">{p.name}</div>
+                        <div className="text-xs text-neutral-500">{p.sku}</div>
+                    </div>
+                </div>
+            ) },
+            { key: 'category', header: 'Category' },
+            { key: 'price', header: 'Price', render: (p: Product) => `$${p.price.toFixed(2)}` },
+            { key: 'stock', header: 'Stock', render: (p: Product) => (
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${p.stock <= (p.lowStockThreshold || 5) ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                    {p.stock} units
                 </span>
-              )}
-            </div>
-          )
-        },
-        { key: 'sku', header: 'SKU' },
-      ] as ManagementColumn<Product>[],
-      formFields: [
-        { key: 'name', label: 'Product Name', type: 'text', required: true },
-        { key: 'imageUrl', label: 'Image URL', type: 'text' },
-        { key: 'category', label: 'Category', type: 'text', required: true },
-        { key: 'brand', label: 'Brand', type: 'text' },
-        { key: 'price', label: 'Price', type: 'number', required: true },
-        { key: 'stock', label: 'Stock Quantity', type: 'number', required: true },
-        { key: 'unit', label: 'Unit (e.g., pcs, kg)', type: 'text' },
-        { key: 'lowStockThreshold', label: 'Low Stock Threshold', type: 'number' },
-        { key: 'sku', label: 'SKU', type: 'text', required: true },
-        { key: 'expiryDate', label: 'Expiry Date', type: 'date' },
-      ] as ManagementFormField<Product>[],
+            )}
+        ] as ManagementColumn<Product>[],
+        formFields: [
+            { key: 'name', label: 'Product Name', type: 'text', required: true },
+            { key: 'sku', label: 'SKU / Barcode', type: 'text', required: true },
+            { key: 'category', label: 'Category', type: 'text', required: true },
+            { key: 'price', label: 'Price', type: 'number', required: true },
+            { key: 'stock', label: 'Initial Stock', type: 'number', required: true },
+            { key: 'lowStockThreshold', label: 'Low Stock Alert Level', type: 'number' },
+            { key: 'imageUrl', label: 'Product Image', type: 'image' }
+        ] as ManagementFormField<Product>[]
     },
     customers: {
-      columns: [
-        { key: 'name', header: 'Name' },
-        { key: 'email', header: 'Email' },
-        { key: 'phone', header: 'Phone' },
-        { key: 'loyaltyPoints', header: 'Loyalty Points' },
-        { key: 'dueAmount', header: 'Due Amount', render: (item: Customer) => `$${item.dueAmount.toFixed(2)}` },
-      ] as ManagementColumn<Customer>[],
-      formFields: [
-        { key: 'name', label: 'Name', type: 'text', required: true },
-        { key: 'email', label: 'Email', type: 'email', required: true },
-        { key: 'phone', label: 'Phone', type: 'text', required: false },
-        { key: 'loyaltyPoints', label: 'Loyalty Points', type: 'number', required: false },
-        { key: 'dueAmount', label: 'Due Amount', type: 'number', required: false },
-        { key: 'creditLimit', label: 'Credit Limit', type: 'number', required: false },
-      ] as ManagementFormField<Customer>[],
+        columns: [
+            { key: 'name', header: 'Name' },
+            { key: 'phone', header: 'Phone' },
+            { key: 'loyaltyPoints', header: 'Points', render: (c: Customer) => <span className="font-mono text-amber-600 font-bold">{c.loyaltyPoints}</span> },
+            { key: 'dueAmount', header: 'Due', render: (c: Customer) => <span className={c.dueAmount > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>${c.dueAmount.toFixed(2)}</span> }
+        ] as ManagementColumn<Customer>[],
+        formFields: [
+            { key: 'name', label: 'Full Name', type: 'text', required: true },
+            { key: 'phone', label: 'Phone Number', type: 'text', required: true },
+            { key: 'email', label: 'Email', type: 'email' },
+            { key: 'creditLimit', label: 'Credit Limit', type: 'number' }
+        ] as ManagementFormField<Customer>[]
     },
     employees: {
-      columns: [
-          { 
-            key: 'name', 
-            header: 'Name',
-            render: (item: User) => (
-              <div className="flex items-center gap-3">
-                <img src={item.avatarUrl} alt={item.name} className="w-8 h-8 rounded-full object-cover bg-neutral-200" />
-                <span>{item.name}</span>
-              </div>
-            )
-          },
-          { key: 'email', header: 'Email' },
-          { key: 'role', header: 'Role' },
-      ] as ManagementColumn<User>[],
-      formFields: [
-          { key: 'name', label: 'Name', type: 'text', required: true },
-          { key: 'email', label: 'Email', type: 'email', required: true },
-          { key: 'role', label: 'Role', type: 'select', required: true, options: Object.values(Role).map(role => ({ value: role, label: role })) },
-          { key: 'avatarUrl', label: 'Photo', type: 'image', required: false },
-      ] as ManagementFormField<User>[],
+        columns: [
+            { key: 'name', header: 'Name', render: (u: User) => (
+                <div className="flex items-center gap-2">
+                    <img src={u.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
+                    <span>{u.name}</span>
+                </div>
+            )},
+            { key: 'email', header: 'Email' },
+            { key: 'role', header: 'Role', render: (u: User) => (
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold
+                    ${u.role === Role.Admin ? 'bg-purple-100 text-purple-800' :
+                      u.role === Role.Manager ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                    {u.role}
+                </span>
+            )}
+        ] as ManagementColumn<User>[],
+        formFields: [
+            { key: 'name', label: 'Name', type: 'text', required: true },
+            { key: 'email', label: 'Email', type: 'email', required: true },
+            { key: 'password', label: 'Password', type: 'text', required: true },
+            { key: 'role', label: 'Role', type: 'select', options: Object.values(Role).map(r => ({ value: r, label: r })), required: true }
+        ] as ManagementFormField<User>[]
     },
     suppliers: {
-      columns: [
-        { key: 'name', header: 'Supplier Name' },
-        { key: 'contactPerson', header: 'Contact Person' },
-        { key: 'phone', header: 'Phone' },
-        { key: 'email', header: 'Email' },
-      ] as ManagementColumn<Supplier>[],
-      formFields: [
-        { key: 'name', label: 'Supplier Name', type: 'text', required: true },
-        { key: 'contactPerson', label: 'Contact Person', type: 'text', required: true },
-        { key: 'phone', label: 'Phone', type: 'text' },
-        { key: 'email', label: 'Email', type: 'email' },
-      ] as ManagementFormField<Supplier>[],
+        columns: [
+            { key: 'name', header: 'Company Name' },
+            { key: 'contactPerson', header: 'Contact Person' },
+            { key: 'phone', header: 'Phone' },
+            { key: 'email', header: 'Email' }
+        ] as ManagementColumn<Supplier>[],
+        formFields: [
+            { key: 'name', label: 'Company Name', type: 'text', required: true },
+            { key: 'contactPerson', label: 'Contact Person', type: 'text', required: true },
+            { key: 'phone', label: 'Phone', type: 'text', required: true },
+            { key: 'email', label: 'Email', type: 'email', required: true }
+        ] as ManagementFormField<Supplier>[]
     },
     purchases: {
-      columns: [
-        { key: 'id', header: 'PO Number' },
-        { key: 'supplierName', header: 'Supplier' },
-        { key: 'createdAt', header: 'Date', render: (item: PurchaseOrder) => new Date(item.createdAt).toLocaleDateString() },
-        { key: 'status', header: 'Status', render: (item: PurchaseOrder) => (
-            <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                item.status === 'Completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' :
-                item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300' :
-                'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
-            }`}>
-                {item.status}
-            </span>
-        ) },
-        { key: 'total', header: 'Total', render: (item: PurchaseOrder) => `$${item.total.toFixed(2)}` },
-        { key: 'createdBy', header: 'Created By' },
-      ] as ManagementColumn<PurchaseOrder>[],
-      formFields: [
-        // A simplified form for now. A real one would have a nested item form.
-        { key: 'supplierId', label: 'Supplier', type: 'select', required: true, options: [] }, // Options populated dynamically in App.tsx
-        { key: 'status', label: 'Status', type: 'select', required: true, options: [{value: 'Pending', label: 'Pending'}, {value: 'Completed', label: 'Completed'}, {value: 'Cancelled', label: 'Cancelled'}] },
-        { key: 'total', label: 'Total', type: 'number', required: true },
-      ] as ManagementFormField<PurchaseOrder>[],
+        columns: [
+            { key: 'id', header: 'PO ID', render: (po: PurchaseOrder) => <span className="font-mono text-xs">#{po.id}</span> },
+            { key: 'supplierName', header: 'Supplier' },
+            { key: 'status', header: 'Status', render: (po: PurchaseOrder) => (
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${po.status === 'Completed' ? 'bg-green-100 text-green-800' : po.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>{po.status}</span>
+            )},
+            { key: 'total', header: 'Total Cost', render: (po: PurchaseOrder) => `$${po.total.toFixed(2)}` },
+            { key: 'createdAt', header: 'Date', render: (po: PurchaseOrder) => new Date(po.createdAt).toLocaleDateString() }
+        ] as ManagementColumn<PurchaseOrder>[],
+        formFields: [
+            { key: 'supplierId', label: 'Supplier', type: 'select', options: [], required: true }, // Options populated in component
+            { key: 'status', label: 'Status', type: 'select', options: [{value: 'Pending', label: 'Pending'}, {value: 'Completed', label: 'Completed'}, {value: 'Cancelled', label: 'Cancelled'}], required: true },
+            // Note: Full PO creation usually needs a complex form for items, simplistic for now
+        ] as ManagementFormField<PurchaseOrder>[]
     },
     expenses: {
         columns: [
-            { key: 'date', header: 'Date', render: (item: Expense) => new Date(item.date).toLocaleDateString() },
             { key: 'category', header: 'Category' },
             { key: 'description', header: 'Description' },
-            { key: 'amount', header: 'Amount', render: (item: Expense) => `$${item.amount.toFixed(2)}` },
-            { key: 'recordedBy', header: 'Recorded By' },
+            { key: 'amount', header: 'Amount', render: (e: Expense) => `$${e.amount.toFixed(2)}` },
+            { key: 'date', header: 'Date', render: (e: Expense) => new Date(e.date).toLocaleDateString() },
+            { key: 'recordedBy', header: 'Recorded By' }
         ] as ManagementColumn<Expense>[],
         formFields: [
-            { key: 'date', label: 'Date', type: 'date', required: true },
             { key: 'category', label: 'Category', type: 'text', required: true },
-            { key: 'description', label: 'Description', type: 'text' },
+            { key: 'description', label: 'Description', type: 'text', required: true },
             { key: 'amount', label: 'Amount', type: 'number', required: true },
-        ] as ManagementFormField<Expense>[],
+            { key: 'date', label: 'Date', type: 'text' } // Simplified, usually date picker
+        ] as ManagementFormField<Expense>[]
     }
-  };
+};
 
-export const LOYALTY_CONVERSION_RATE = 0.01; // 1 Point = $0.01
-export const TRIAL_DURATION_DAYS = 7;
+export const TRANSLATIONS: Record<Language, Record<string, string>> = {
+    'en': {
+        'Dashboard': 'Dashboard',
+        'Point of Sale': 'Point of Sale',
+        'Products': 'Products',
+        'Customers': 'Customers',
+        'Employees': 'Employees',
+        'Settings': 'Settings',
+        'Reports': 'Reports',
+        'Suppliers': 'Suppliers',
+        'Purchases': 'Purchases',
+        'Expenses': 'Expenses',
+        'Total Revenue': 'Total Revenue',
+        'New Customers': 'New Customers',
+        'Products Sold': 'Products Sold',
+        'Todays Transactions': 'Today\'s Transactions',
+        'Search': 'Search products...',
+        'Charge': 'Charge',
+        'Subtotal': 'Subtotal',
+        'Tax': 'Tax',
+        'Total': 'Total',
+        'Add New': 'Add New',
+        'Import CSV': 'Import CSV',
+        'Print Labels': 'Print Labels'
+    },
+    'bn': {
+        'Dashboard': 'ড্যাশবোর্ড',
+        'Point of Sale': 'বিক্রয় কেন্দ্র',
+        'Products': 'পণ্য তালিকা',
+        'Customers': 'গ্রাহক তালিকা',
+        'Employees': 'কর্মচারী',
+        'Settings': 'সেটিংস',
+        'Reports': 'রিপোর্ট',
+        'Suppliers': 'সরবরাহকারী',
+        'Purchases': 'ক্রয়',
+        'Expenses': 'খরচ',
+        'Total Revenue': 'মোট আয়',
+        'New Customers': 'নতুন গ্রাহক',
+        'Products Sold': 'বিক্রিত পণ্য',
+        'Todays Transactions': 'আজকের লেনদেন',
+        'Search': 'পণ্য খুঁজুন...',
+        'Charge': 'বিল নিন',
+        'Subtotal': 'সাবটোটাল',
+        'Tax': 'ট্যাক্স',
+        'Total': 'মোট',
+        'Add New': 'নতুন যোগ করুন',
+        'Import CSV': 'CSV ইম্পোর্ট',
+        'Print Labels': 'লেবেল প্রিন্ট'
+    }
+};
+
+export const CURRENCIES: Record<Currency, { symbol: string, rate: number }> = {
+    'USD': { symbol: '$', rate: 1 },
+    'BDT': { symbol: '৳', rate: 110 },
+    'EUR': { symbol: '€', rate: 0.92 },
+    'INR': { symbol: '₹', rate: 83 }
+};

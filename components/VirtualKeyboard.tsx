@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 
 // Define XMarkIcon locally as it's missing from ICONS in some contexts or to avoid circular deps
@@ -7,6 +6,10 @@ const XMarkIcon: React.FC<{ className?: string }> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
 );
+
+const isTouchDevice = () => {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+};
 
 const KEYS = [
   ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Backspace'],
@@ -22,6 +25,10 @@ const VirtualKeyboard: React.FC = () => {
   const keyboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isTouchDevice()) {
+        return; // Do not attach any listeners on non-touch devices
+    }
+
     const handleFocus = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
       // Check if target is an input or textarea and is NOT read-only
@@ -42,6 +49,7 @@ const VirtualKeyboard: React.FC = () => {
         }
         // Otherwise close keyboard
         setIsVisible(false);
+        setInputTarget(null);
     }
 
     document.addEventListener('focusin', handleFocus);
@@ -111,7 +119,9 @@ const VirtualKeyboard: React.FC = () => {
     inputTarget.setSelectionRange(newCursorPos, newCursorPos);
   };
 
-  if (!isVisible) return null;
+  if (!isTouchDevice() || !isVisible) {
+    return null;
+  }
 
   return (
     <div ref={keyboardRef} className="fixed bottom-0 left-0 right-0 bg-neutral-200 dark:bg-neutral-900 border-t border-neutral-300 dark:border-neutral-700 p-2 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[9999]">

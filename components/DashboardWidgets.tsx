@@ -1,6 +1,6 @@
 import React from 'react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { ActivityLog, Product } from '../types';
+import { ActivityLog, Product, Sale } from '../types';
 import { MOCK_SALES_CHART_DATA, MOCK_TOP_PRODUCTS_DATA, MOCK_ACTIVITY_LOGS } from '../constants';
 import { getAiInsight } from '../services/geminiService';
 
@@ -109,7 +109,7 @@ export const RecentActivity: React.FC = () => (
     </div>
 );
 
-export const AiInsights: React.FC = () => {
+export const AiInsights: React.FC<{ products: Product[]; sales: Sale[] }> = ({ products, sales }) => {
   const [prompt, setPrompt] = React.useState('');
   const [insight, setInsight] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -117,7 +117,12 @@ export const AiInsights: React.FC = () => {
   const handleFetchInsight = async () => {
     if (!prompt.trim()) return;
     setIsLoading(true);
-    const result = await getAiInsight(prompt);
+    
+    // Construct context from props to help the AI
+    const context = `Context: ${products.length} products in inventory, ${sales.length} total sales records.`;
+    const fullPrompt = `${context}\n${prompt}`;
+    
+    const result = await getAiInsight(fullPrompt);
     setInsight(result);
     setIsLoading(false);
   };

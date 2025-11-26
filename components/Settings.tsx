@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { User, Role, LicenseKey, Language, Currency } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Role, LicenseKey, Language, Currency, MasterLicense } from '../types';
 import { ICONS, CURRENCIES } from '../constants';
+import { generateLicenseKey, PLAN_FEATURE_MAP } from '../services/licenseService';
 
 // Icons
 const UserCircleIcon: React.FC<{ className?: string }> = (props) => (
@@ -13,37 +14,21 @@ const PaintBrushIcon: React.FC<{ className?: string }> = (props) => (
 const Cog8ToothIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0m-15 0H3m18 0h-1.5m-15 0a7.5 7.5 0 1115 0m-15 0H3m18 0h-1.5m-15 0a7.5 7.5 0 0015 0m-15 0a7.5 7.5 0 1115 0" /></svg>
 );
-const ShieldCheckIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" /></svg>
-);
-const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" /></svg>
-);
-const KeyIcon = ICONS.KeyIcon;
-const ClipboardIcon: React.FC<{ className?: string }> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a2.25 2.25 0 01-2.25 2.25h-1.5a2.25 2.25 0 01-2.25-2.25v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-  </svg>
-);
-const XMarkIcon: React.FC<{ className?: string }> = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-);
+const GlobeAltIcon = ICONS.GlobeAltIcon;
+const ShieldCheckIcon = ICONS.ShieldCheckIcon;
+const XMarkIcon = ICONS.XMarkIcon;
 const QuestionMarkCircleIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg>
 );
 const ChevronDownIcon: React.FC<{ className?: string }> = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
 );
-const BookOpenIcon: React.FC<{ className?: string }> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-  </svg>
-);
-const GlobeAltIcon = ICONS.GlobeAltIcon;
-
+const BanknotesIcon = ICONS.BanknotesIcon;
+const KeyIcon = ICONS.KeyIcon;
 
 interface SettingsProps {
     user: User;
+    onUpdateUser: (updatedData: Partial<User>) => void;
     employees: User[];
     isDarkMode: boolean;
     toggleDarkMode: () => void;
@@ -51,8 +36,10 @@ interface SettingsProps {
     setBusinessName: (name: string) => void;
     businessLogo: string | null;
     setBusinessLogo: (logo: string) => void;
-    licenseKeys: LicenseKey[];
+    licenseKeys: LicenseKey[]; // Device keys
     setLicenseKeys: React.Dispatch<React.SetStateAction<LicenseKey[]>>;
+    licenseDatabase: MasterLicense[]; // Master keys
+    setLicenseDatabase: React.Dispatch<React.SetStateAction<MasterLicense[]>>;
     language: Language;
     setLanguage: (lang: Language) => void;
     currency: Currency;
@@ -115,34 +102,14 @@ const AccordionItem: React.FC<{ title: string; children: React.ReactNode; }> = (
 };
 
 const FULL_GUIDE_SECTIONS = [
-    {
-        title: "1. Getting Started",
-        content: "Welcome to Zenith POS. \n\n**Login & Roles:**\n- **Admin:** Full access (Settings, Users, Reports).\n- **Manager:** Manages Inventory & Reports.\n- **Cashier:** Access to POS & Customers only.\n\n**Dashboard:** Customize your dashboard widgets by clicking the 'Customize' button on the top right."
-    },
-    {
-        title: "2. Advanced Point of Sale (POS)",
-        content: "Our POS is designed for speed and flexibility.\n\n- **Touchscreen Mode:** Tap any input field (like Search) to open the Virtual Keyboard automatically.\n- **Discounts:** Click the 'Tag Icon' next to any cart item to apply a % or Fixed Amount discount.\n- **Hold Order:** Temporarily save an order if a customer needs time. Resume it later from the 'Held Orders' menu.\n- **Credit Sales:** Select a customer to enable the 'Credit' payment option.\n- **WhatsApp Invoice:** After a sale, click 'WhatsApp Invoice' to send the receipt directly to the customer's phone."
-    },
-    {
-        title: "3. Inventory & Products",
-        content: "Manage your stock efficiently.\n\n- **Add Products:** Add items manually or use **'Import CSV'** to upload hundreds of products at once.\n- **Label Printing:** Select multiple products in the list and click **'Print Labels'** to generate barcode stickers.\n- **Stock Adjustment:** Use the 'Adjust Stock' button to correct inventory levels for damage or loss."
-    },
-    {
-        title: "4. Offline Mode",
-        content: "**No Internet? No Problem.**\n\nZenith POS works 100% offline. You can continue selling even when the internet is down. All data is saved locally on your device and will automatically sync once the connection is restored. Look for the 'Cloud' icon in the header to check your status."
-    },
-    {
-        title: "5. Customers & Loyalty",
-        content: "Build customer loyalty.\n\n- **Points:** Customers earn points for every purchase. You can redeem these points for discounts during checkout.\n- **Credit Limit:** Set a maximum credit limit for each customer to control debt risk.\n- **Due Collection:** Go to the Customer page and click the 'Money' icon to record a due payment."
-    },
-    {
-        title: "6. Localization & Currency",
-        content: "Make the app yours.\n\nGo to **Settings > Localization** to:\n- Change the interface language (English / Bangla).\n- Change the currency symbol (USD, BDT, EUR, INR).\nThe entire app will instantly update to reflect your choices."
-    },
-    {
-        title: "7. Data Security & Backup",
-        content: "Your data is safe.\n\n- **Backup:** In Settings, click 'Backup Data' to download a full copy of your system data as a JSON file.\n- **Restore:** If you change devices or clear your browser, use 'Restore Data' to upload your backup file and resume exactly where you left off."
-    }
+    { title: "1. Getting Started", content: "Welcome to Zenith POS. \n\n**Login & Roles:**\n- **Admin:** Full access (Settings, Users, Reports).\n- **Manager:** Manages Inventory & Reports.\n- **Cashier:** Access to POS & Customers only.\n\n**Dashboard:** Customize your dashboard widgets by clicking the 'Customize' button on the top right." },
+    { title: "2. Advanced Point of Sale (POS)", content: "Our POS is designed for speed and flexibility.\n\n- **Touchscreen Mode:** Tap any input field (like Search) to open the Virtual Keyboard automatically.\n- **Discounts:** Click the 'Tag Icon' next to any cart item to apply a % or Fixed Amount discount.\n- **Hold Order:** Temporarily save an order if a customer needs time. Resume it later from the 'Held Orders' menu.\n- **Credit Sales:** Select a customer to enable the 'Credit' payment option.\n- **WhatsApp Invoice:** After a sale, click 'WhatsApp Invoice' to send the receipt directly to the customer's phone." },
+    { title: "3. Inventory & Products", content: "Manage your stock efficiently.\n\n- **Add Products:** Add items manually or use **'Import CSV'** to upload hundreds of products at once.\n- **Label Printing:** Select multiple products in the list and click **'Print Labels'** to generate barcode stickers.\n- **Stock Adjustment:** Use the 'Adjust Stock' button to correct inventory levels for damage or loss." },
+    { title: "4. Offline Mode", content: "**No Internet? No Problem.**\n\nZenith POS works 100% offline. You can continue selling even when the internet is down. All data is saved locally on your device and will automatically sync once the connection is restored. Look for the 'Cloud' icon in the header to check your status." },
+    { title: "5. Customers & Loyalty", content: "Build customer loyalty.\n\n- **Points:** Customers earn points for every purchase. You can redeem these points for discounts during checkout.\n- **Credit Limit:** Set a maximum credit limit for each customer to control debt risk.\n- **Due Collection:** Go to the Customer page and click the 'Money' icon to record a due payment." },
+    { title: "6. Localization & Currency", content: "Make the app yours.\n\nGo to **Settings > Localization** to:\n- Change the interface language (English / Bangla).\n- Change the currency symbol (USD, BDT, EUR, INR).\nThe entire app will instantly update to reflect your choices." },
+    { title: "7. Data Security & Backup", content: "Your data is safe.\n\n- **Backup:** In Settings, click 'Backup Data' to download a full copy of your system data as a JSON file.\n- **Restore:** If you change devices or clear your browser, use 'Restore Data' to upload your backup file and resume exactly where you left off." },
+    { title: "8. Managing Multiple Stores", content: "To manage multiple stores or branches, you need an **Enterprise** plan license key.\n\n- **Activation:** Use your Enterprise key to activate the software on the first device. This will establish your main organization.\n- **Data Separation:** The system keeps data for each organization separate and secure.\n- **Note:** The 'multi-shop' feature in the Enterprise plan allows your single organization to operate from multiple locations/devices under one business umbrella." }
 ];
 
 const HelpModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen, onClose }) => {
@@ -175,29 +142,42 @@ const HelpModal: React.FC<{ isOpen: boolean; onClose: () => void; }> = ({ isOpen
     );
 };
 
-const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggleDarkMode, businessName, setBusinessName, businessLogo, setBusinessLogo, licenseKeys, setLicenseKeys, language, setLanguage, currency, setCurrency, t }) => {
+// Main Settings Component
+const Settings: React.FC<SettingsProps> = (props) => {
+    const { user, onUpdateUser, employees, isDarkMode, toggleDarkMode, businessName, setBusinessName, businessLogo, setBusinessLogo, licenseKeys, setLicenseKeys, licenseDatabase, setLicenseDatabase, language, setLanguage, currency, setCurrency, t } = props;
+    
     const [taxRate, setTaxRate] = useState(8);
-    const [is2faEnabled, setIs2faEnabled] = useState(false);
-    const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
-    const [isRevokeConfirmOpen, setIsRevokeConfirmOpen] = useState(false);
-    const [keyToRevoke, setKeyToRevoke] = useState<LicenseKey | null>(null);
-    const [newKeyData, setNewKeyData] = useState({ userId: '', deviceName: '', validity: 'Lifetime' });
-    const [generatedKey, setGeneratedKey] = useState<string | null>(null);
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-    const [modalError, setModalError] = useState<string | null>(null);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+
+    const [profileData, setProfileData] = useState<Partial<User>>({
+        name: user.name,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+    });
     
      useEffect(() => {
         if (notification) {
-            const timer = setTimeout(() => {
-                setNotification(null);
-            }, 5000);
+            const timer = setTimeout(() => setNotification(null), 5000);
             return () => clearTimeout(timer);
         }
     }, [notification]);
 
+    const handleProfileDataChange = (e: React.ChangeEvent<HTMLInputElement>) => setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+    const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setProfileData(prev => ({ ...prev, avatarUrl: reader.result as string }));
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSaveChanges = (section: string) => {
+        if (section === 'Profile') onUpdateUser({ name: profileData.name, avatarUrl: profileData.avatarUrl });
         setNotification({ type: 'success', message: `${section} settings saved successfully!` });
     };
 
@@ -205,94 +185,20 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setBusinessLogo(reader.result as string);
-            };
+            reader.onloadend = () => setBusinessLogo(reader.result as string);
             reader.readAsDataURL(file);
         }
     };
-
-    const handleGenerateKey = () => {
-        setModalError(null);
-        if (!newKeyData.userId || !newKeyData.deviceName.trim()) {
-            setModalError("Please select a user and enter a device name.");
-            return;
-        }
-
-        const selectedUser = employees.find(e => e.id === newKeyData.userId);
-        if (!selectedUser) {
-            setModalError("Selected user could not be found.");
-            return;
-        }
-
-        try {
-            const key = `ZENITH-${[...Array(3)].map(() => Math.random().toString(36).substring(2, 6).toUpperCase()).join('-')}`;
-            
-            const newLicense: LicenseKey = {
-                id: `lk${Date.now()}`,
-                key: key,
-                assignedToUserId: selectedUser.id,
-                assignedToUserName: selectedUser.name,
-                deviceName: newKeyData.deviceName,
-                status: 'Active',
-                validity: newKeyData.validity === 'Lifetime' ? 'Lifetime' : new Date(Date.now() + 31536000000).toISOString(),
-                organizationId: user.organizationId,
-            };
-
-            setLicenseKeys(prev => [...prev, newLicense]);
-            setGeneratedKey(key);
-            setNotification({ type: 'success', message: 'New license key generated.' });
-        } catch (error) {
-            console.error("Key generation failed:", error);
-            setModalError("An unexpected error occurred during key generation.");
-        }
-    };
-
-    const openLicenseModal = () => {
-        setGeneratedKey(null);
-        setModalError(null);
-        setNewKeyData({ userId: '', deviceName: '', validity: 'Lifetime' });
-        setIsLicenseModalOpen(true);
-    };
     
-    const closeLicenseModal = () => setIsLicenseModalOpen(false);
-
-    const openRevokeConfirm = (license: LicenseKey) => {
-        setKeyToRevoke(license);
-        setIsRevokeConfirmOpen(true);
-    };
-
-    const closeRevokeConfirm = () => {
-        setKeyToRevoke(null);
-        setIsRevokeConfirmOpen(false);
-    };
-
-    const handleRevokeKey = () => {
-        if (!keyToRevoke) {
-            setNotification({ type: 'error', message: "No key selected for revocation." });
-            closeRevokeConfirm();
-            return;
-        }
-        try {
-            setLicenseKeys(prev => prev.map(k => k.id === keyToRevoke.id ? { ...k, status: 'Revoked' } : k));
-            setNotification({ type: 'success', message: `Key for ${keyToRevoke.assignedToUserName} has been revoked.` });
-        } catch (error) {
-            console.error("Failed to revoke key:", error);
-            setNotification({ type: 'error', message: "Failed to revoke the key. Please try again." });
-        }
-        closeRevokeConfirm();
-    };
-    
-    // --- BACKUP AND RESTORE ---
     const handleBackup = () => {
-        const data = {
-            users: localStorage.getItem('zenith_users'),
-            products: localStorage.getItem('zenith_products'),
-            customers: localStorage.getItem('zenith_customers'),
-            sales: localStorage.getItem('zenith_sales'),
-            // ... add other keys
+        const dataToBackup = {
+            'zenith_users': localStorage.getItem('zenith_users'),
+            'zenith_products': localStorage.getItem('zenith_products'),
+            'zenith_customers': localStorage.getItem('zenith_customers'),
+            'zenith_sales': localStorage.getItem('zenith_sales'),
+            'zenith_license_database': localStorage.getItem('zenith_license_database'),
         };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(dataToBackup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -301,9 +207,7 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
         setNotification({ type: 'success', message: 'Backup downloaded successfully!' });
     };
     
-    const handleRestoreClick = () => {
-        fileInputRef.current?.click();
-    }
+    const handleRestoreClick = () => fileInputRef.current?.click();
     
     const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -312,11 +216,9 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
         reader.onload = (event) => {
             try {
                 const data = JSON.parse(event.target?.result as string);
-                if(data.users) localStorage.setItem('zenith_users', data.users);
-                if(data.products) localStorage.setItem('zenith_products', data.products);
-                if(data.customers) localStorage.setItem('zenith_customers', data.customers);
-                if(data.sales) localStorage.setItem('zenith_sales', data.sales);
-                
+                Object.keys(data).forEach(key => {
+                    if (data[key]) localStorage.setItem(key, data[key]);
+                });
                 setNotification({ type: 'success', message: 'Data restored! Please reload the page.' });
                 setTimeout(() => window.location.reload(), 2000);
             } catch(err) {
@@ -326,39 +228,59 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
         reader.readAsText(file);
     };
 
-
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto pb-10">
             <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">{t('Settings')}</h1>
             
-            {notification && (
-                <NotificationBanner 
-                    type={notification.type} 
-                    message={notification.message} 
-                    onClose={() => setNotification(null)} 
+            {notification && <NotificationBanner type={notification.type} message={notification.message} onClose={() => setNotification(null)} />}
+
+            {/* License Generators based on Role */}
+            {user.email === 'superadmin@zenith.com' ? (
+                <MasterLicenseGenerator 
+                    licenseDatabase={licenseDatabase} 
+                    setLicenseDatabase={setLicenseDatabase} 
+                    setNotification={setNotification}
                 />
+            ) : user.role === Role.Admin && (
+                 <DeviceLicenseGenerator 
+                    licenseKeys={licenseKeys}
+                    setLicenseKeys={setLicenseKeys}
+                    user={user}
+                    setNotification={setNotification}
+                 />
             )}
 
-            {/* Help & Documentation Card */}
-            <SettingsCard title="Help & Documentation" icon={<BookOpenIcon className="w-6 h-6 text-primary-500" />}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className="font-medium">System User Guide</h4>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Need help? View the complete manual on how to operate the POS software.</p>
-                    </div>
-                     <button onClick={() => setIsHelpModalOpen(true)} className="bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 font-semibold px-4 py-2 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-900/80 transition-colors flex items-center gap-2">
-                        <QuestionMarkCircleIcon className="w-5 h-5"/>
-                        Open Guide
-                    </button>
-                </div>
-            </SettingsCard>
+            <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
+            
+            <button
+                onClick={() => setIsHelpModalOpen(true)}
+                className="fixed bottom-6 right-6 bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 z-40"
+                aria-label="Open settings guide"
+            >
+                <QuestionMarkCircleIcon className="w-8 h-8" />
+            </button>
 
-            {/* Profile Settings */}
+             {/* Profile Settings */}
             <SettingsCard title="Profile" icon={<UserCircleIcon className="w-6 h-6 text-primary-500" />}>
-                <div className="flex items-center gap-4 mb-6">
-                    <img src={user.avatarUrl} alt="Profile Avatar" className="w-20 h-20 rounded-full object-cover" />
+                <div className="flex items-center gap-6 mb-6">
+                    <div className="relative w-20 h-20 group flex-shrink-0">
+                        <img src={profileData.avatarUrl} alt="Profile Avatar" className="w-20 h-20 rounded-full object-cover" />
+                        <button 
+                            onClick={() => avatarInputRef.current?.click()}
+                            className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        >
+                            <span className="text-xs font-semibold">Change</span>
+                        </button>
+                        <input 
+                            type="file" 
+                            ref={avatarInputRef} 
+                            onChange={handleAvatarChange} 
+                            className="hidden" 
+                            accept="image/png, image/jpeg" 
+                        />
+                    </div>
                     <div>
-                        <h4 className="text-xl font-bold">{user.name}</h4>
+                        <h4 className="text-xl font-bold">{profileData.name}</h4>
                         <p className="text-neutral-500 dark:text-neutral-400">{user.role}</p>
                     </div>
                 </div>
@@ -366,19 +288,11 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Full Name</label>
-                        <input type="text" defaultValue={user.name} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                        <input type="text" name="name" value={profileData.name} onChange={handleProfileDataChange} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Email Address</label>
-                        <input type="email" defaultValue={user.email} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Current Password</label>
-                        <input type="password" placeholder="••••••••" className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">New Password</label>
-                        <input type="password" placeholder="••••••••" className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                        <input type="email" value={profileData.email} disabled className="mt-1 w-full bg-neutral-200 dark:bg-neutral-800 border-transparent rounded-lg p-2.5 text-neutral-500 dark:text-neutral-400 cursor-not-allowed" />
                     </div>
                 </div>
                 <div className="mt-6 text-right">
@@ -389,241 +303,257 @@ const Settings: React.FC<SettingsProps> = ({ user, employees, isDarkMode, toggle
             {/* Localization Settings */}
             <SettingsCard title="Localization" icon={<GlobeAltIcon className="w-6 h-6 text-primary-500" />}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <div>
-                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Language</label>
-                        <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                            <option value="en">English</option>
-                            <option value="bn">বাংলা (Bangla)</option>
-                        </select>
+                    <div>
+                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">Language</label>
+                        <div className="flex gap-2">
+                             <button onClick={() => setLanguage('en')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold border ${language === 'en' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600'}`}>English</button>
+                             <button onClick={() => setLanguage('bn')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold border ${language === 'bn' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-600'}`}>Bangla</button>
+                        </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Currency</label>
-                        <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                            {Object.keys(CURRENCIES).map(curr => (
-                                <option key={curr} value={curr}>{curr} ({CURRENCIES[curr as Currency].symbol})</option>
+                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">Currency</label>
+                        <select 
+                            value={currency} 
+                            onChange={(e) => setCurrency(e.target.value as Currency)}
+                            className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                        >
+                            {Object.entries(CURRENCIES).map(([code, config]) => (
+                                <option key={code} value={code}>{code} - {config.symbol}</option>
                             ))}
                         </select>
                     </div>
                 </div>
             </SettingsCard>
-
-            {/* Business Settings (Admin only) */}
-            {user.role === Role.Admin && (
-                 <SettingsCard title="Business" icon={<BuildingStorefrontIcon className="w-6 h-6 text-primary-500" />}>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Business Name</label>
-                            <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="mt-1 w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Business Logo</label>
-                            <div className="mt-2 flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-md bg-neutral-100 dark:bg-neutral-700 flex items-center justify-center">
-                                    {businessLogo ? <img src={businessLogo} alt="Business Logo Preview" className="h-full w-full object-contain" /> : <BuildingStorefrontIcon className="w-8 h-8 text-neutral-400" />}
-                                </div>
-                                <input
-                                    type="file"
-                                    onChange={handleLogoChange}
-                                    accept="image/*"
-                                    className="block w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                 </SettingsCard>
-            )}
-
-            {/* Appearance Settings */}
-            <SettingsCard title="Appearance" icon={<PaintBrushIcon className="w-6 h-6 text-primary-500" />}>
-                <div className="flex items-center justify-between">
+            
+            {/* Business Configuration */}
+            <SettingsCard title="Business Configuration" icon={<BanknotesIcon className="w-6 h-6 text-primary-500" />}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <h4 className="font-medium">Dark Mode</h4>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Toggle between light and dark themes.</p>
+                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-1">Business Name</label>
+                        <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
                     </div>
-                    <button onClick={toggleDarkMode} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isDarkMode ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                    <div>
+                         <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-1">Default Tax Rate (%)</label>
+                         <input type="number" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                    </div>
+                </div>
+                <div className="mt-4">
+                     <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">Business Logo</p>
+                     <div className="flex items-center gap-4">
+                         {businessLogo && <img src={businessLogo} alt="Logo" className="w-16 h-16 object-contain border border-neutral-200 rounded p-1" />}
+                         <input type="file" accept="image/*" onChange={handleLogoChange} className="text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"/>
+                     </div>
                 </div>
             </SettingsCard>
-            
+
             {/* System Settings */}
             <SettingsCard title="System" icon={<Cog8ToothIcon className="w-6 h-6 text-primary-500" />}>
-                <div className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                      <div>
-                        <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Default Tax Rate (%)</label>
-                        <input type="number" value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} className="mt-1 w-full md:w-1/2 bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
+                        <h4 className="font-medium">Data Management</h4>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Backup or restore your application data.</p>
                     </div>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                         <div>
-                            <h4 className="font-medium">Data Management</h4>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Backup or restore your application data.</p>
-                        </div>
-                        <div className="flex gap-2 mt-2 md:mt-0">
-                            <button onClick={handleBackup} className="bg-secondary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-secondary-700 transition-colors">Backup Data</button>
-                             <button onClick={handleRestoreClick} className="bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors">Restore Data</button>
-                             <input type="file" accept=".json" ref={fileInputRef} className="hidden" onChange={handleRestoreFile} />
-                        </div>
+                    <div className="flex gap-2 mt-2 md:mt-0">
+                        <button onClick={handleBackup} className="bg-secondary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-secondary-700 transition-colors">Backup Data</button>
+                         <button onClick={handleRestoreClick} className="bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-100 font-semibold px-4 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-500 transition-colors">Restore Data</button>
+                         <input type="file" accept=".json" ref={fileInputRef} className="hidden" onChange={handleRestoreFile} />
                     </div>
-                </div>
-                 <div className="mt-6 text-right">
-                    <button onClick={() => handleSaveChanges('System')} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Save Changes</button>
                 </div>
             </SettingsCard>
-
-            {/* Security Settings */}
-            <SettingsCard title="Security" icon={<ShieldCheckIcon className="w-6 h-6 text-primary-500" />}>
-                 <div className="flex items-center justify-between mb-4">
-                    <div>
-                        <h4 className="font-medium">Two-Factor Authentication (2FA)</h4>
-                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Add an extra layer of security to your account.</p>
-                    </div>
-                    <button onClick={() => setIs2faEnabled(!is2faEnabled)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${is2faEnabled ? 'bg-primary-600' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${is2faEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                </div>
-            </SettingsCard>
-
-            {/* License Management (Admin only) */}
-            {user.role === Role.Admin && (
-                <SettingsCard title="License Management" icon={<KeyIcon className="w-6 h-6 text-primary-500" />}>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                        <div>
-                            <h4 className="font-medium">Activation Keys</h4>
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400">Manage activation keys for your team's devices.</p>
-                        </div>
-                        <div className="mt-2 md:mt-0">
-                            <button onClick={openLicenseModal} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Generate New Key</button>
-                        </div>
-                    </div>
-                    
-                    <div className="mt-4 flow-root">
-                        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                            <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-                                <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
-                                    <thead>
-                                        <tr>
-                                            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-neutral-900 dark:text-white sm:pl-0">Key</th>
-                                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-neutral-900 dark:text-white">Assigned To</th>
-                                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-neutral-900 dark:text-white">Status</th>
-                                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-neutral-900 dark:text-white">Validity</th>
-                                            <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-0"><span className="sr-only">Actions</span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                                        {licenseKeys.map(license => (
-                                            <tr key={license.id}>
-                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-mono text-neutral-500 dark:text-neutral-400 sm:pl-0">{`ZENITH-****-****-${license.key.slice(-4)}`}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-neutral-500 dark:text-neutral-300">
-                                                    <div className="font-medium text-neutral-900 dark:text-white">{license.assignedToUserName}</div>
-                                                    <div>{license.deviceName}</div>
-                                                </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm">
-                                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${license.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'}`}>
-                                                        {license.status}
-                                                    </span>
-                                                </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-neutral-500 dark:text-neutral-300">
-                                                    {license.validity === 'Lifetime' ? 'Lifetime' : `Expires ${new Date(license.validity).toLocaleDateString()}`}
-                                                </td>
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-0">
-                                                    {license.status === 'Active' ? (
-                                                        <button onClick={() => openRevokeConfirm(license)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">Revoke</button>
-                                                    ) : (
-                                                        <span className="text-neutral-400">Revoked</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </SettingsCard>
-            )}
-
-            {isLicenseModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
-                    <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl w-full max-w-md">
-                        <div className="flex justify-between items-center p-4 border-b dark:border-neutral-700">
-                            <h3 className="text-lg font-semibold">{generatedKey ? 'Key Generated Successfully' : 'Generate New License Key'}</h3>
-                            <button onClick={closeLicenseModal} className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700"><XMarkIcon className="w-6 h-6"/></button>
-                        </div>
-                        {generatedKey ? (
-                            <div className="p-6 text-center">
-                                <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-2">Please copy this key and provide it to the user. It will not be shown again.</p>
-                                <div className="relative p-3 bg-neutral-100 dark:bg-neutral-900 rounded-md font-mono text-center">
-                                    {generatedKey}
-                                    <button onClick={() => navigator.clipboard.writeText(generatedKey)} className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-neutral-500 hover:text-primary-600"><ClipboardIcon className="w-5 h-5"/></button>
-                                </div>
-                                <button onClick={closeLicenseModal} className="mt-4 w-full bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Close</button>
-                            </div>
-                        ) : (
-                            <div>
-                                <div className="p-6 space-y-4">
-                                    {modalError && (
-                                        <div className="p-3 rounded-md bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-sm">
-                                            {modalError}
-                                        </div>
-                                    )}
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Assign to User</label>
-                                        <select value={newKeyData.userId} onChange={e => setNewKeyData(p => ({...p, userId: e.target.value}))} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none">
-                                            <option value="" disabled>Select an employee</option>
-                                            {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.role})</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Device Name</label>
-                                        <input type="text" placeholder="e.g., Main Counter PC" value={newKeyData.deviceName} onChange={e => setNewKeyData(p => ({...p, deviceName: e.target.value}))} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5 focus:ring-2 focus:ring-primary-500 focus:outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Validity</label>
-                                        <div className="flex gap-4">
-                                            <label className="flex items-center"><input type="radio" name="validity" value="Lifetime" checked={newKeyData.validity === 'Lifetime'} onChange={e => setNewKeyData(p => ({...p, validity: e.target.value}))} className="mr-2"/> Lifetime</label>
-                                            <label className="flex items-center"><input type="radio" name="validity" value="1 Year" checked={newKeyData.validity === '1 Year'} onChange={e => setNewKeyData(p => ({...p, validity: e.target.value}))} className="mr-2"/> 1 Year</label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-end p-4 border-t dark:border-neutral-700 space-x-2">
-                                    <button onClick={closeLicenseModal} className="text-neutral-500 bg-white hover:bg-neutral-100 focus:ring-4 focus:outline-none focus:ring-primary-300 rounded-lg border border-neutral-200 text-sm font-medium px-5 py-2.5 hover:text-neutral-900 focus:z-10 dark:bg-neutral-700 dark:text-neutral-300 dark:border-neutral-500 dark:hover:text-white dark:hover:bg-neutral-600 dark:focus:ring-neutral-600">Cancel</button>
-                                    <button onClick={handleGenerateKey} className="text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-primary-600 dark:hover:bg-primary-700 dark:focus:ring-primary-800">Generate Key</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-            
-            {isRevokeConfirmOpen && keyToRevoke && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4">
-                    <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl w-full max-w-md">
-                        <div className="flex justify-between items-center p-4 border-b dark:border-neutral-700">
-                            <h3 className="text-lg font-semibold">Confirm Revoke</h3>
-                            <button onClick={closeRevokeConfirm} className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-700"><XMarkIcon className="w-6 h-6"/></button>
-                        </div>
-                        <div className="p-6">
-                            <p>Are you sure you want to revoke the key for <span className="font-semibold">{keyToRevoke.assignedToUserName}</span> on device <span className="font-semibold">{keyToRevoke.deviceName}</span>? They will no longer be able to access the application with this key.</p>
-                        </div>
-                        <div className="flex items-center justify-end p-4 border-t dark:border-neutral-700 space-x-2">
-                            <button onClick={closeRevokeConfirm} className="text-neutral-500 bg-white hover:bg-neutral-100 focus:ring-4 focus:outline-none focus:ring-primary-300 rounded-lg border border-neutral-200 text-sm font-medium px-5 py-2.5 hover:text-neutral-900 focus:z-10 dark:bg-neutral-700 dark:text-neutral-300 dark:border-neutral-500 dark:hover:text-white dark:hover:bg-neutral-600 dark:focus:ring-neutral-600">Cancel</button>
-                            <button onClick={handleRevokeKey} className="text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-800">Revoke Key</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            <HelpModal isOpen={isHelpModalOpen} onClose={() => setIsHelpModalOpen(false)} />
-            
-            <button
-                onClick={() => setIsHelpModalOpen(true)}
-                className="fixed bottom-6 right-6 bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 z-40"
-                aria-label="Open settings guide"
-            >
-                <QuestionMarkCircleIcon className="w-8 h-8" />
-            </button>
         </div>
     );
 };
+
+// Sub-component for Super Admin License Management
+interface MasterLicenseGeneratorProps {
+    licenseDatabase: MasterLicense[];
+    setLicenseDatabase: React.Dispatch<React.SetStateAction<MasterLicense[]>>;
+    setNotification: (notif: { type: 'success' | 'error'; message: string } | null) => void;
+}
+
+const MasterLicenseGenerator: React.FC<MasterLicenseGeneratorProps> = ({ licenseDatabase, setLicenseDatabase, setNotification }) => {
+    const [businessName, setBusinessName] = useState('');
+    const [email, setEmail] = useState('');
+    const [plan, setPlan] = useState<'STD' | 'PREM' | 'ENT'>('PREM');
+    const [expiryDate, setExpiryDate] = useState('');
+    const [features, setFeatures] = useState<string[]>(PLAN_FEATURE_MAP[plan]);
+
+    useEffect(() => {
+        const today = new Date();
+        today.setFullYear(today.getFullYear() + 1);
+        setExpiryDate(today.toISOString().split('T')[0]);
+    }, []);
+
+    useEffect(() => {
+        setFeatures(PLAN_FEATURE_MAP[plan]);
+    }, [plan]);
+
+    const handleFeatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { value, checked } = e.target;
+        setFeatures(prev => checked ? [...prev, value] : prev.filter(f => f !== value));
+    };
+
+    const handleGenerate = () => {
+        if (!expiryDate) {
+            alert('Please select an expiry date.');
+            return;
+        }
+        if (!email) {
+            alert('Please provide an email address to assign this license.');
+            return;
+        }
+
+        const newLicense = generateLicenseKey(plan, new Date(expiryDate), features.join(''), businessName, email);
+        setLicenseDatabase(prev => [...prev, newLicense]);
+        setNotification({type: 'success', message: `License key ${newLicense.key.slice(0, 15)}... generated successfully!`});
+    };
+    
+    const handleRevoke = (key: string) => {
+        setLicenseDatabase(prev => prev.map(lic => lic.key === key ? {...lic, status: 'Revoked'} : lic));
+        setNotification({type: 'success', message: 'License has been revoked.'});
+    };
+    
+    const getStatusColor = (status: MasterLicense['status']) => {
+        switch(status) {
+            case 'Generated': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300';
+            case 'Activated': return 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300';
+            case 'Revoked': return 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300';
+            case 'Expired': return 'bg-neutral-100 text-neutral-700 dark:bg-neutral-900/50 dark:text-neutral-300';
+        }
+    }
+
+    return (
+        <SettingsCard title="Super Admin: Master License Generator" icon={<ShieldCheckIcon className="w-6 h-6 text-amber-500" />}>
+            <div className="p-4 bg-amber-50 dark:bg-amber-900/30 rounded-lg text-amber-800 dark:text-amber-200 text-sm mb-6">
+                This panel is visible to Super Admins only. Generate keys locked to specific client emails.
+            </div>
+            {/* Generator Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b dark:border-neutral-700 pb-6 mb-6">
+                <div className="space-y-4">
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Assign to Email (Required)" className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5" />
+                    <input type="text" value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="Business Name (Optional)" className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5" />
+                    <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5" />
+                </div>
+                <div className="space-y-4">
+                     <div className="grid grid-cols-3 gap-2">
+                        {(['STD', 'PREM', 'ENT'] as const).map(p => 
+                            <label key={p} className={`text-center p-2 rounded-lg cursor-pointer border ${plan === p ? 'bg-primary-50 border-primary-400' : 'dark:border-neutral-600'}`}>
+                                <input type="radio" name="plan" value={p} checked={plan === p} onChange={e => setPlan(e.target.value as any)} className="sr-only" /> {p}
+                            </label>
+                        )}
+                    </div>
+                     <div className="grid grid-cols-2 gap-2">
+                        {(['A', 'R', 'M', 'C'] as const).map(f =>
+                             <label key={f} className="flex items-center text-sm">
+                                <input type="checkbox" value={f} checked={features.includes(f)} onChange={handleFeatureChange} className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-2" />
+                                {f==='A' ? 'AI' : f==='R' ? 'Reports' : f==='M' ? 'Multi-Lang' : 'Cloud'}
+                             </label>
+                        )}
+                     </div>
+                </div>
+                 <div className="md:col-span-2 text-center">
+                    <button onClick={handleGenerate} className="bg-primary-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-primary-700">Generate New License</button>
+                 </div>
+            </div>
+            
+            {/* License List */}
+            <h4 className="font-semibold mb-2">License Database</h4>
+             <div className="overflow-x-auto max-h-96">
+                <table className="w-full text-sm">
+                    <thead><tr><th className="text-left p-2">Key</th><th className="text-left p-2">Email Lock</th><th className="text-left p-2">Status</th><th className="text-right p-2">Actions</th></tr></thead>
+                    <tbody className="divide-y dark:divide-neutral-700">
+                        {licenseDatabase.map(lic => (
+                            <tr key={lic.key}>
+                                <td className="p-2 font-mono text-xs">{lic.key}</td>
+                                <td className="p-2 text-xs">{lic.emailLock || 'None'}</td>
+                                <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(lic.status)}`}>{lic.status}</span></td>
+                                <td className="p-2 text-right">
+                                    {lic.status !== 'Revoked' && <button onClick={() => handleRevoke(lic.key)} className="text-red-500 hover:underline text-xs">Revoke</button>}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </SettingsCard>
+    );
+};
+
+// Sub-component for Shop Admin Device Management
+interface DeviceLicenseGeneratorProps {
+    licenseKeys: LicenseKey[];
+    setLicenseKeys: React.Dispatch<React.SetStateAction<LicenseKey[]>>;
+    user: User;
+    setNotification: (notif: { type: 'success' | 'error'; message: string } | null) => void;
+}
+
+const DeviceLicenseGenerator: React.FC<DeviceLicenseGeneratorProps> = ({ licenseKeys, setLicenseKeys, user, setNotification }) => {
+    const [deviceName, setDeviceName] = useState('');
+
+    const handleGenerate = () => {
+        if (!deviceName) return alert("Please enter a device name.");
+        
+        const newKey: LicenseKey = {
+            id: `dk_${Date.now()}`,
+            key: `DEV-${Math.random().toString(36).substr(2,6).toUpperCase()}`,
+            assignedToUserId: '', 
+            assignedToUserName: 'Unassigned',
+            status: 'Active',
+            validity: 'Lifetime',
+            deviceName: deviceName,
+            organizationId: user.organizationId
+        };
+        
+        setLicenseKeys(prev => [...prev, newKey]);
+        setNotification({ type: 'success', message: `Device key for "${deviceName}" generated successfully!`});
+        setDeviceName('');
+    }
+
+    const handleRevoke = (id: string) => {
+        setLicenseKeys(prev => prev.map(k => k.id === id ? { ...k, status: 'Revoked' } : k));
+        setNotification({ type: 'success', message: 'Device key revoked.' });
+    }
+
+    return (
+        <SettingsCard title="Shop Admin: Device & Terminal Management" icon={<KeyIcon className="w-6 h-6 text-blue-500" />}>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-800 dark:text-blue-200 text-sm mb-6">
+                Generate access keys for your shop's terminals or employee devices.
+            </div>
+            
+            <div className="flex gap-4 mb-6">
+                <input 
+                    type="text" 
+                    value={deviceName} 
+                    onChange={e => setDeviceName(e.target.value)} 
+                    placeholder="Device Name (e.g., Counter 1)" 
+                    className="flex-1 bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg p-2.5" 
+                />
+                <button onClick={handleGenerate} className="bg-primary-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-primary-700 whitespace-nowrap">
+                    Add Device Key
+                </button>
+            </div>
+
+            <h4 className="font-semibold mb-2">Active Device Keys</h4>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead><tr><th className="text-left p-2">Device Name</th><th className="text-left p-2">Key</th><th className="text-left p-2">Status</th><th className="text-right p-2">Actions</th></tr></thead>
+                    <tbody className="divide-y dark:divide-neutral-700">
+                        {licenseKeys.map(key => (
+                            <tr key={key.id}>
+                                <td className="p-2 font-medium">{key.deviceName}</td>
+                                <td className="p-2 font-mono text-xs">{key.key}</td>
+                                <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${key.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{key.status}</span></td>
+                                <td className="p-2 text-right">
+                                    {key.status === 'Active' && <button onClick={() => handleRevoke(key.id)} className="text-red-500 hover:underline text-xs">Revoke</button>}
+                                </td>
+                            </tr>
+                        ))}
+                        {licenseKeys.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-neutral-500">No device keys generated yet.</td></tr>}
+                    </tbody>
+                </table>
+            </div>
+        </SettingsCard>
+    );
+}
 
 export default Settings;

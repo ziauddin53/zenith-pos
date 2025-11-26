@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { DashboardCard, SalesLineChart, TopProductsPieChart, RecentActivity, AiInsights, LowStockAlerts } from './DashboardWidgets';
 import { ICONS, WIDGETS_CONFIG } from '../constants';
-import { Product, User } from '../types';
+import { Product, User, MasterLicense, LicenseKey, Sale } from '../types';
 
-const { ChartBarIcon, UsersIcon, CubeIcon, ShoppingCartIcon } = ICONS;
+const { ChartBarIcon, UsersIcon, CubeIcon, ShoppingCartIcon, KeyIcon } = ICONS;
 
 // Icons for Customize Modal
 const CogIcon: React.FC<{ className?: string }> = (props) => (
@@ -12,6 +12,11 @@ const CogIcon: React.FC<{ className?: string }> = (props) => (
 );
 const XMarkIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+);
+const LockClosedIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}>
+    <path fillRule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clipRule="evenodd" />
+  </svg>
 );
 
 
@@ -54,19 +59,41 @@ const CustomizeDashboardModal: React.FC<CustomizeDashboardModalProps> = ({ isOpe
     );
 };
 
+const LockedWidget: React.FC<{ featureName: string }> = ({ featureName }) => (
+    <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-md h-full flex flex-col items-center justify-center text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-neutral-50 dark:bg-neutral-700/30 opacity-50"></div>
+        <div className="relative z-10">
+            <div className="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 text-neutral-400 dark:text-neutral-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                <LockClosedIcon className="w-6 h-6"/>
+            </div>
+            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 mb-1">{featureName}</h3>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">This feature is available in Premium & Enterprise plans.</p>
+            <button className="mt-4 text-sm font-semibold bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">
+                Upgrade Now
+            </button>
+        </div>
+    </div>
+);
+
 interface DashboardProps {
   products: Product[];
+  sales: Sale[];
   user: User;
   onWidgetChange: (widgetId: string, isVisible: boolean) => void;
   formatCurrency: (amount: number) => string;
   t: (key: string) => string;
+  activeLicense: MasterLicense | null;
+  licenseKeys: LicenseKey[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange, formatCurrency, t }) => {
+const Dashboard: React.FC<DashboardProps> = ({ products, sales, user, onWidgetChange, formatCurrency, t, activeLicense, licenseKeys }) => {
   const [isCustomizeModalOpen, setCustomizeModalOpen] = useState(false);
   const { dashboardWidgets } = user;
 
   const visibleWidgets = Object.values(dashboardWidgets).filter(Boolean).length;
+  
+  const totalKeys = licenseKeys.length;
+  const activeKeys = licenseKeys.filter(k => k.status === 'Active').length;
 
   return (
     <div className="space-y-6">
@@ -93,6 +120,7 @@ const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange, f
             {dashboardWidgets.newCustomers && <DashboardCard title={t('New Customers')} value="1,204" change="+8.2%" changeType="increase" icon={<UsersIcon className="w-6 h-6" />} />}
             {dashboardWidgets.productsSold && <DashboardCard title={t('Products Sold')} value="5,890" change="-1.7%" changeType="decrease" icon={<CubeIcon className="w-6 h-6" />} />}
             {dashboardWidgets.todaysTransactions && <DashboardCard title={t('Todays Transactions')} value="23" change="+5" changeType="increase" icon={<ShoppingCartIcon className="w-6 h-6" />} />}
+            {dashboardWidgets.licenseActivations && <DashboardCard title={t('License Activations')} value={`${activeKeys} / ${totalKeys}`} change={`${totalKeys > 0 ? ((activeKeys / totalKeys) * 100).toFixed(0) : 0}% Active`} changeType="increase" icon={<KeyIcon className="w-6 h-6" />} />}
         </div>
         
         {(dashboardWidgets.salesOverview || dashboardWidgets.topProducts) && (
@@ -120,7 +148,11 @@ const Dashboard: React.FC<DashboardProps> = ({ products, user, onWidgetChange, f
             )}
             {dashboardWidgets.aiInsights && (
               <div className={(dashboardWidgets.recentActivity || dashboardWidgets.lowStockAlerts) ? "lg:col-span-2" : "lg:col-span-3"}>
-                  <AiInsights />
+                  {activeLicense?.enabledFeatures?.includes('AI_INSIGHTS') ? (
+                      <AiInsights products={products} sales={sales} />
+                  ) : (
+                      <LockedWidget featureName="AI-Powered Insights" />
+                  )}
               </div>
             )}
           </div>
