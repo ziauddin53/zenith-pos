@@ -5,6 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zenith POS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -58,43 +60,26 @@
         },
       }
     </script>
-    <style>
-      /* Global Icon Size Fix */
-      /* Sets default size to 20px (w-5 h-5 equivalent) */
-      /* We exclude .recharts-surface to prevent breaking charts which need dynamic sizing */
-      svg:not(.recharts-surface) {
-        width: 20px;
-        height: 20px;
-      }
-      
-      /* Note: Tailwind utility classes (like w-6, h-6) have higher specificity 
-         than the tag selector above, so they will correctly override this default 
-         where explicitly set (e.g., Logo, specialized icons). */
-    </style>
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
-    "vite": "https://aistudiocdn.com/vite@^7.2.2",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.48.1"
-  }
-}
-</script>
-  <script type="module" crossorigin src="./assets/index-WRCqBua8.js"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://aistudiocdn.com/react@^19.2.0",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+        "react/": "https://aistudiocdn.com/react@^19.2.0/",
+        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+        "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
+        "vite": "https://aistudiocdn.com/vite@^7.2.4",
+        "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+        "@capacitor/cli": "https://aistudiocdn.com/@capacitor/cli@^7.4.4",
+        "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.85.0"
+      }
+    }
+    </script>
+  <script type="module" crossorigin src="./assets/index-BuECsh_X.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CUWAIxto.css">
 </head>
-  <body class="bg-neutral-50 dark:bg-neutral-900">
+  <body class="bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans">
     <div id="root"></div>
   </body>
 </html>
