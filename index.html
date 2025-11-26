@@ -58,6 +58,19 @@
         },
       }
     </script>
+    <style>
+      /* Global Icon Size Fix */
+      /* Sets default size to 20px (w-5 h-5 equivalent) */
+      /* We exclude .recharts-surface to prevent breaking charts which need dynamic sizing */
+      svg:not(.recharts-surface) {
+        width: 20px;
+        height: 20px;
+      }
+      
+      /* Note: Tailwind utility classes (like w-6, h-6) have higher specificity 
+         than the tag selector above, so they will correctly override this default 
+         where explicitly set (e.g., Logo, specialized icons). */
+    </style>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -79,7 +92,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="./assets/index-DK1Chame.js"></script>
+  <script type="module" crossorigin src="./assets/index-CJQgWwBE.js"></script>
 </head>
   <body class="bg-neutral-50 dark:bg-neutral-900">
     <div id="root"></div>
