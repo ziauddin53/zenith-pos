@@ -1,36 +1,48 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants';
+import { MasterLicense } from '../types';
 
-const { BuildingStorefrontIcon, ShieldCheckIcon } = ICONS;
+const { BuildingStorefrontIcon } = ICONS;
 
-export type AuthView = 'login' | 'register' | 'forgot_password' | 'verify_email';
+export type AuthView = 'login' | 'register' | 'forgot_password';
 
-export interface AuthProps {
+interface AuthProps {
     onLogin: (email: string, password: string) => void;
-    onInitiateRegister: (name: string, email: string, password: string, onSuccess: () => void) => void;
+    onInitiateRegister: (name: string, email: string, password: string) => void;
     onVerifyEmail: (code: string) => void;
     onInitiateForgotPassword: (email: string) => void;
     onVerifyResetCode: (code: string) => void;
     onResetPassword: (password: string) => void;
     error: string | null;
     onClearError?: () => void;
+    noUsersFound?: boolean; // New prop to indicate fresh install
+    activeLicense?: MasterLicense | null;
+    onDeactivateLicense?: () => void;
 }
 
 export const Auth: React.FC<AuthProps> = ({ 
     onLogin, 
     onInitiateRegister, 
-    onVerifyEmail,
     onInitiateForgotPassword,
     error, 
-    onClearError 
+    onClearError,
+    noUsersFound,
+    activeLicense,
+    onDeactivateLicense
 }) => {
     const [authView, setAuthView] = useState<AuthView>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [verificationCode, setVerificationCode] = useState('');
+
+    // If no users found (fresh activation), default to Register view
+    useEffect(() => {
+        if (noUsersFound) {
+            setAuthView('register');
+        }
+    }, [noUsersFound]);
 
     const changeView = (view: AuthView) => {
         setAuthView(view);
@@ -52,12 +64,7 @@ export const Auth: React.FC<AuthProps> = ({
                     alert("Passwords do not match!");
                     return;
                 }
-                onInitiateRegister(name, email, password, () => {
-                    setAuthView('verify_email');
-                });
-                break;
-            case 'verify_email':
-                onVerifyEmail(verificationCode);
+                onInitiateRegister(name, email, password);
                 break;
             case 'forgot_password':
                 onInitiateForgotPassword(email);
@@ -66,26 +73,26 @@ export const Auth: React.FC<AuthProps> = ({
     };
 
     const getTitle = () => {
+        if (noUsersFound && authView === 'register') return 'Setup Admin Account';
         switch(authView) {
             case 'login': return 'Welcome Back';
             case 'register': return 'Create Account';
-            case 'verify_email': return 'Verify Email';
             case 'forgot_password': return 'Forgot Password';
         }
     };
 
     const getSubtitle = () => {
+        if (noUsersFound && authView === 'register') return 'Create the first admin account for this shop.';
         switch(authView) {
             case 'login': return 'Please login to your account';
             case 'register': return 'Register your admin account';
-            case 'verify_email': return 'Enter the code sent to your email';
             case 'forgot_password': return 'Enter your email to receive a reset link';
         }
     };
 
     return (
         <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-neutral-800 w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-w-4xl">
+            <div className="bg-white dark:bg-neutral-800 max-w-md w-full rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-w-4xl">
                 
                 {/* Left Side (Brand) */}
                 <div className="bg-primary-600 p-8 md:w-1/2 flex flex-col justify-center items-center text-center text-white">
@@ -110,10 +117,22 @@ export const Auth: React.FC<AuthProps> = ({
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
                         {getSubtitle()}
                     </p>
+                    
+                    {activeLicense?.emailLock && (
+                         <div className="mb-4 p-2 bg-blue-50 text-blue-800 rounded border border-blue-200 text-xs text-center">
+                            Licensed to: <strong>{activeLicense.emailLock}</strong>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm border border-red-200">
                             {error}
+                        </div>
+                    )}
+                    
+                    {noUsersFound && authView === 'login' && (
+                         <div className="mb-4 p-3 bg-amber-100 text-amber-800 rounded-lg text-sm border border-amber-200">
+                            Fresh Install? Please <button onClick={() => changeView('register')} className="font-bold underline">Register</button> first.
                         </div>
                     )}
 
@@ -132,19 +151,17 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
-                        {authView !== 'verify_email' && (
-                             <div>
-                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Email Address</label>
-                                <input 
-                                    type="email" 
-                                    required 
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full px-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="name@company.com"
-                                />
-                            </div>
-                        )}
+                        <div>
+                            <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Email Address</label>
+                            <input 
+                                type="email" 
+                                required 
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full px-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                placeholder="name@company.com"
+                            />
+                        </div>
 
                         {['login', 'register'].includes(authView) && (
                             <div>
@@ -187,34 +204,12 @@ export const Auth: React.FC<AuthProps> = ({
                             </div>
                         )}
 
-                        {authView === 'verify_email' && (
-                            <div>
-                                <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">Verification Code</label>
-                                <div className="relative">
-                                    <ShieldCheckIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        value={verificationCode}
-                                        onChange={(e) => setVerificationCode(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-neutral-50 dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none tracking-widest text-lg font-mono"
-                                        placeholder="123456"
-                                        maxLength={6}
-                                    />
-                                </div>
-                                <p className="text-xs text-neutral-500 mt-2">
-                                    We sent a code to <span className="font-semibold">{email}</span>
-                                </p>
-                            </div>
-                        )}
-
                         <button 
                             type="submit" 
                             className="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700 transition-colors mt-2"
                         >
                             {authView === 'login' && 'Sign In'}
-                            {authView === 'register' && 'Send Code'}
-                            {authView === 'verify_email' && 'Verify & Register'}
+                            {authView === 'register' && 'Register Admin'}
                             {authView === 'forgot_password' && 'Send Reset Link'}
                         </button>
                     </form>
@@ -226,16 +221,27 @@ export const Auth: React.FC<AuthProps> = ({
                                 <button onClick={() => changeView('register')} className="text-primary-600 font-semibold hover:underline">Register</button>
                             </>
                         )}
-                        {authView === 'register' && (
+                        {authView === 'register' && !noUsersFound && (
                             <>
                                 Already have an account?{' '}
                                 <button onClick={() => changeView('login')} className="text-primary-600 font-semibold hover:underline">Login</button>
                             </>
                         )}
-                        {(authView === 'forgot_password' || authView === 'verify_email') && (
+                         {authView === 'register' && noUsersFound && (
+                            <p className="text-xs italic">Registration required for first use.</p>
+                        )}
+                        {authView === 'forgot_password' && (
                             <button onClick={() => changeView('login')} className="text-neutral-500 hover:text-neutral-800 font-medium">← Back to Login</button>
                         )}
                     </div>
+                    
+                    {onDeactivateLicense && (
+                         <div className="mt-8 pt-4 border-t border-neutral-100 text-center">
+                            <button onClick={onDeactivateLicense} className="text-red-500 text-xs hover:underline">
+                                Wrong License? Deactivate & Change Key
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

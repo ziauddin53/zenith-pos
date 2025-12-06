@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Notification, Shift } from '../../types';
+import { User, Notification, Shift, Store } from '../../types';
 import { NAV_ITEMS, ICONS } from '../../constants';
 
 interface HeaderProps {
@@ -20,6 +20,11 @@ interface HeaderProps {
   isOnline: boolean;
   t: (key: string) => string;
   isInTrial?: boolean;
+  // Multi-store props
+  activeStoreId: string;
+  setActiveStoreId: (id: string) => void;
+  accessibleStores: Store[];
+  allStores: Store[];
 }
 
 // Icons
@@ -43,14 +48,18 @@ const Bars3Icon: React.FC<{ className?: string }> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
     </svg>
 );
+const CheckIcon: React.FC<{ className?: string }> = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" {...props}><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clipRule="evenodd" /></svg>
+);
+
 const BuildingStorefrontIcon: React.FC<{ className?: string }> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5A2.25 2.25 0 0011.25 11.25H4.5A2.25 2.25 0 002.25 13.5V21M3 3h12M3 3v2.25M3 3l9 9M15 3h6m0 0v2.25M15 3l6 6M21 3l-9 9M15 21v-7.5A2.25 2.25 0 0012.75 11.25h-.625a2.25 2.25 0 00-2.25 2.25V21" />
     </svg>
 );
-const { WifiIcon, CloudIcon } = ICONS;
+const { WifiIcon, CloudIcon, GlobeAltIcon } = ICONS;
 
-export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, isDarkMode, toggleDarkMode, businessName, businessLogo, activeView, setActiveView, notifications, setNotifications, activeShift, onToggleShift, isOnline, t, isInTrial }) => {
+export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, isDarkMode, toggleDarkMode, businessName, businessLogo, activeView, setActiveView, notifications, setNotifications, activeShift, onToggleShift, isOnline, t, isInTrial, activeStoreId, setActiveStoreId, accessibleStores, allStores }) => {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
@@ -75,14 +84,16 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
     setMenuOpen(false);
   };
   
-  const pageTitle = React.useMemo(() => {
-    if (activeView === 'dashboard') {
-      return businessName;
+  const displayTitle = React.useMemo(() => {
+    const currentStore = allStores.find(s => s.id === activeStoreId);
+    if (currentStore) {
+        return currentStore.name;
     }
-    const navItem = NAV_ITEMS.find(item => item.path === activeView);
-    const viewName = navItem ? navItem.name : activeView.charAt(0).toUpperCase() + activeView.slice(1);
-    return t(viewName);
-  }, [activeView, businessName, t]);
+    if (activeStoreId === 'global') {
+        return `${businessName} (Global)`;
+    }
+    return businessName;
+  }, [activeStoreId, allStores, businessName]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -129,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
                 <img src={businessLogo} alt="Business Logo" className="h-8 w-8 object-contain" /> :
                 <BuildingStorefrontIcon className="h-8 w-8 text-primary-600"/>
             }
-            <h1 className="text-xl font-bold text-neutral-800 dark:text-neutral-100 truncate">{pageTitle}</h1>
+            <h1 className="text-xl font-bold text-neutral-800 dark:text-neutral-100 truncate">{displayTitle}</h1>
         </div>
 
         {/* Right Side */}
@@ -188,14 +199,43 @@ export const Header: React.FC<HeaderProps> = ({ user, onLogout, toggleSidebar, i
               </div>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-40">
-                <button onClick={handleProfileClick} className="w-full text-left block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700">Profile</button>
-                <button
-                  onClick={onLogout}
-                  className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                >
-                  Logout
-                </button>
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-40">
+                <div className="px-4 py-2 border-b dark:border-neutral-700">
+                    <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">{user.name}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{user.role}</p>
+                </div>
+                
+                {/* Store Switcher */}
+                <div className="py-2">
+                    <p className="px-4 pb-2 text-xs font-semibold text-neutral-400 uppercase">Switch Store</p>
+                    <button
+                        onClick={() => { setActiveStoreId('global'); setMenuOpen(false); }}
+                        className="w-full text-left flex items-center justify-between px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                    >
+                       <span className="flex items-center gap-2"><GlobeAltIcon /> All Stores (Global View)</span>
+                        {activeStoreId === 'global' && <CheckIcon className="w-5 h-5 text-primary-600" />}
+                    </button>
+                    {accessibleStores.map(store => (
+                        <button
+                            key={store.id}
+                            onClick={() => { setActiveStoreId(store.id); setMenuOpen(false); }}
+                            className="w-full text-left flex items-center justify-between px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                        >
+                            <span className="flex items-center gap-2"><BuildingStorefrontIcon className="w-4 h-4" /> {store.name}</span>
+                            {activeStoreId === store.id && <CheckIcon className="w-5 h-5 text-primary-600" />}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="border-t dark:border-neutral-700 py-1">
+                    <button onClick={handleProfileClick} className="w-full text-left block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700">Profile</button>
+                    <button
+                    onClick={onLogout}
+                    className="w-full text-left block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                    >
+                    Logout
+                    </button>
+                </div>
               </div>
             )}
           </div>

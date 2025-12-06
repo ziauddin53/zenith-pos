@@ -39,7 +39,7 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTria
     setLoading(true);
 
     // Simulate network validation delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     const key = inputKey.trim();
     const email = inputEmail.trim().toLowerCase();
@@ -56,9 +56,12 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTria
 
     // 2. Check Status
     if (license.status === 'Activated') {
-        setError("This license key has already been activated.");
-        setLoading(false);
-        return;
+        // Allow re-activation for the same email for recovery purposes
+        if (license.emailLock && license.emailLock.toLowerCase() !== email) {
+            setError("This license key has already been activated for a different user.");
+            setLoading(false);
+            return;
+        }
     }
 
     if (license.status === 'Revoked') {
@@ -74,16 +77,14 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTria
         return;
     }
     
-    // 4. Validate Email Lock (New Security Feature)
+    // 4. Validate Email Lock
     if (license.emailLock) {
         if (license.emailLock.toLowerCase() !== email) {
-            setError("This license key is locked to a different email address. Please use the email assigned during purchase.");
+            setError("This license key is locked to a different email address.");
             setLoading(false);
             return;
         }
     } else {
-        // If it's a legacy key without email lock, we might optionally force locking it now, or just warn.
-        // For security, we require email input now.
         if(!email) {
              setError("Please enter your email address.");
              setLoading(false);
@@ -91,29 +92,21 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTria
         }
     }
 
-    // 5. Validate Business Name (if locked)
-    if (license.businessNameLock) {
-        if (license.businessNameLock.toLowerCase() !== businessName.toLowerCase()) {
-            setError(`This license is locked to the business name: "${license.businessNameLock}". Please enter it exactly as registered.`);
-            setLoading(false);
-            return;
-        }
-    } else if (!businessName && !license.businessNameLock) {
-         if (!businessName) {
-            setError("Please enter a Business Name to associate with this license.");
-            setLoading(false);
-            return;
-         }
-    }
-
     // Success
     setLoading(false);
     onSuccess({
         ...license,
         businessNameLock: businessName || license.businessNameLock,
-        emailLock: email || license.emailLock // Ensure it's locked to this email now
+        emailLock: email // Ensure consistency
     });
   };
+  
+  const handleFactoryReset = () => {
+      if(confirm("Factory Reset: This will delete ALL data (products, sales, users) on this device and reset the license. This cannot be undone. Are you sure?")) {
+          localStorage.clear();
+          window.location.reload();
+      }
+  }
 
   return (
     <div className="min-h-screen bg-neutral-100 dark:bg-neutral-900 flex flex-col justify-center items-center p-4">
@@ -200,13 +193,18 @@ export const LicenseGate: React.FC<LicenseGateProps> = ({ onSuccess, onStartTria
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700 text-center">
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">Want to try before buying?</p>
+        <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700 flex flex-col items-center gap-3">
             <button 
                 onClick={onStartTrial}
                 className="text-primary-600 dark:text-primary-400 font-semibold text-sm hover:underline"
             >
                 Start 7-Day Free Trial
+            </button>
+            <button
+                onClick={handleFactoryReset}
+                className="text-red-500 text-xs hover:underline"
+            >
+                Trouble logging in? Factory Reset
             </button>
         </div>
       </div>

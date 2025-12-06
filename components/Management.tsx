@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { ManagementColumn, ManagementFormField, ICONS } from '../constants';
 import { Customer, ManagementDataType, Product } from '../types';
@@ -33,6 +32,10 @@ interface ManagementProps<T> {
     };
     t: (key: string) => string;
     formatCurrency: (val: number) => string;
+    canAddNew?: boolean;
+    canEdit?: boolean;
+    canDelete?: boolean;
+    addNewDisabledTooltip?: string;
 }
 
 // Modal component defined outside to prevent re-creation on re-renders, fixing the input focus bug.
@@ -105,7 +108,22 @@ const LabelPrintModal: React.FC<{ items: Product[], onClose: () => void }> = ({ 
 }
 
 
-export const Management = <T extends { id: string, [key: string]: any }>({ dataType, data, columns, formFields, onAdd, onUpdate, onDelete, customActions, t, formatCurrency }: ManagementProps<T>) => {
+export const Management = <T extends { id: string, [key: string]: any }>({ 
+    dataType, 
+    data, 
+    columns, 
+    formFields, 
+    onAdd, 
+    onUpdate, 
+    onDelete, 
+    customActions, 
+    t, 
+    formatCurrency, 
+    canAddNew = true, 
+    canEdit = true, 
+    canDelete = true, 
+    addNewDisabledTooltip = '' 
+}: ManagementProps<T>) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -242,15 +260,12 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                 
                 const cols = line.split(',');
                 if (cols.length >= 5) {
-                    // Mapping based on assumption
-                    // For a real app, we'd use a CSV parser library
                     const newItem: any = {
                         name: cols[0],
                         price: parseFloat(cols[1]) || 0,
                         stock: parseInt(cols[2]) || 0,
                         category: cols[3],
                         sku: cols[4],
-                        // defaults
                         imageUrl: '',
                         brand: '',
                     };
@@ -280,7 +295,7 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                         <input type="text" placeholder={t('Search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-neutral-100 dark:bg-neutral-700 border-transparent rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary-500 focus:outline-none"/>
                     </div>
                     
-                    {dataType === 'products' && (
+                    {dataType === 'products' && canAddNew && (
                         <>
                             <button onClick={handleImportClick} className="bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 px-3 py-2 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors flex items-center gap-1">
                                 <ArrowUpTrayIcon className="w-5 h-5" />
@@ -290,7 +305,14 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                         </>
                     )}
 
-                    <button onClick={() => openModal()} className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap">{t('Add New')}</button>
+                    {canAddNew && (
+                        <button 
+                            onClick={() => openModal()} 
+                            title={addNewDisabledTooltip}
+                            className="bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
+                            {t('Add New')}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -304,10 +326,12 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                                 {t('Print Labels')}
                             </button>
                          )}
-                        <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors">
-                            <TrashIcon className="w-4 h-4" />
-                            Delete Selected
-                        </button>
+                        {canDelete && (
+                            <button onClick={handleDeleteSelected} className="flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg hover:bg-red-700 transition-colors">
+                                <TrashIcon className="w-4 h-4" />
+                                Delete Selected
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -335,14 +359,17 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                                     </td>
                                 ))}
                                 <td className="px-6 py-4 flex justify-end items-center gap-4">
-                                    {/* Fix: Cast 'item' to 'unknown' then 'Customer' to satisfy TypeScript's generic type constraints. */}
                                     {dataType === 'customers' && ((item as unknown) as Customer).dueAmount > 0 && customActions?.onRecordPayment && (
                                         <button onClick={() => openPaymentModal(item)} className="text-green-600 dark:text-green-400 hover:underline" title="Record Payment">
                                             <BanknotesIcon className="w-5 h-5"/>
                                         </button>
                                     )}
-                                    <button onClick={() => openModal(item)} className="text-primary-600 dark:text-primary-400 hover:underline"><PencilIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => openDeleteConfirm(item)} className="text-red-600 dark:text-red-400 hover:underline"><TrashIcon className="w-5 h-5"/></button>
+                                    {canEdit && (
+                                        <button onClick={() => openModal(item)} className="text-primary-600 dark:text-primary-400 hover:underline"><PencilIcon className="w-5 h-5"/></button>
+                                    )}
+                                    {canDelete && (
+                                        <button onClick={() => openDeleteConfirm(item)} className="text-red-600 dark:text-red-400 hover:underline"><TrashIcon className="w-5 h-5"/></button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -350,7 +377,7 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                 </table>
             </div>
             
-            {isModalOpen && (
+            {isModalOpen && canAddNew && (
                 <Modal title={currentItem ? `Edit ${dataType.slice(0, -1)}` : `Add ${dataType.slice(0, -1)}`} onClose={closeModal}>
                     <form onSubmit={handleSubmit}>
                         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -422,7 +449,6 @@ export const Management = <T extends { id: string, [key: string]: any }>({ dataT
                     <div className="p-6 space-y-4">
                         <div className="p-3 bg-neutral-100 dark:bg-neutral-700/50 rounded-lg text-center">
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">Current Due Amount</p>
-                            {/* Fix: Cast 'currentItem' to 'unknown' then 'Customer' to satisfy TypeScript's generic type constraints. */}
                             <p className="text-2xl font-bold">{formatCurrency(((currentItem as unknown) as Customer).dueAmount)}</p>
                         </div>
                         <div>

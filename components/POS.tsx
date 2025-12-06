@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Product, CartItem, Customer, User, Sale, HeldCart } from '../types';
+import { Product, CartItem, Customer, User, Sale, HeldCart, Role } from '../types';
 import { ICONS, LOYALTY_CONVERSION_RATE } from '../constants';
 
 // Extract available icons from constants
@@ -48,21 +47,28 @@ const CreditCardIcon: React.FC<{ className?: string }> = (props) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
     </svg>
 );
+const CheckIcon: React.FC<{ className?: string }> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+    </svg>
+);
 
 interface POSProps {
   user: User;
   customers: Customer[];
   products: Product[];
-  onAddSale: (sale: Omit<Sale, 'id' | 'cashier' | 'cashierId' | 'date'>) => void;
+  onAddSale: (sale: Sale, cartItems: CartItem[]) => void;
   onAddCustomer: (customer: Omit<Customer, 'id'>) => Customer;
   heldCarts: HeldCart[];
   setHeldCarts: React.Dispatch<React.SetStateAction<HeldCart[]>>;
   formatCurrency: (amount: number) => string;
   t: (key: string) => string;
   businessName: string;
+  activeStoreId: string;
+  taxRate: number; // New Prop
 }
 
-export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, onAddCustomer, heldCarts, setHeldCarts, formatCurrency, t, businessName }) => {
+export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, onAddCustomer, heldCarts, setHeldCarts, formatCurrency, t, businessName, activeStoreId, taxRate }) => {
   // Cart State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,6 +99,9 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   const [customerQuery, setCustomerQuery] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [newCustomerData, setNewCustomerData] = useState({ name: '', phone: '', email: '' });
+
+  // RBAC: Check if user is a viewer
+  const isViewer = user.role === Role.Viewer;
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
@@ -133,11 +142,12 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
       return 0;
   }, [useLoyaltyPoints, selectedCustomer, subtotal]);
 
-  const taxRate = 0.08; // Example 8% tax
-  const tax = (subtotal - loyaltyDiscount) * taxRate;
+  // Dynamic Tax Calculation
+  const tax = (subtotal - loyaltyDiscount) * (taxRate / 100);
   const total = subtotal - loyaltyDiscount + tax;
 
   const addToCart = (product: Product) => {
+    if (isViewer) return; // Viewers can't add to cart
     if (product.stock <= 0) {
         alert(t('Out of Stock'));
         return;
@@ -157,6 +167,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   };
 
   const updateQuantity = (productId: string, delta: number) => {
+    if (isViewer) return;
     setCart(prev => prev.map(item => {
       if (item.id === productId) {
         const newQuantity = item.quantity + delta;
@@ -175,10 +186,12 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   };
 
   const removeFromCart = (productId: string) => {
+    if (isViewer) return;
     setCart(prev => prev.filter(item => item.id !== productId));
   };
 
   const clearCart = () => {
+      if (isViewer) return;
       setCart([]);
       setSelectedCustomer(null);
       setCustomerQuery('');
@@ -188,6 +201,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   // --- DISCOUNT LOGIC ---
 
   const openDiscountModal = (index: number) => {
+      if (isViewer) return;
       setEditingItemIndex(index);
       const item = cart[index];
       setDiscountType(item.discountType || 'percentage');
@@ -229,7 +243,8 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
           ...newCustomerData,
           loyaltyPoints: 0,
           dueAmount: 0,
-          creditLimit: 500 // Default limit
+          creditLimit: 500, // Default limit
+          storeId: activeStoreId
       });
       setSelectedCustomer(newCustomer);
       setCustomerQuery(newCustomer.name);
@@ -241,7 +256,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   // --- HOLD/RESUME LOGIC ---
 
   const handleHoldOrder = () => {
-      if (cart.length === 0) return;
+      if (cart.length === 0 || isViewer) return;
       const newHeldCart: HeldCart = {
           id: `hc${Date.now()}`,
           items: cart,
@@ -256,6 +271,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   };
 
   const resumeHeldOrder = (heldCart: HeldCart) => {
+      if (isViewer) return;
       setCart(heldCart.items);
       setSelectedCustomer(heldCart.customer);
       if(heldCart.customer) setCustomerQuery(heldCart.customer.name);
@@ -264,12 +280,18 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
   };
 
   const removeHeldOrder = (id: string) => {
+      if (isViewer) return;
       setHeldCarts(prev => prev.filter(h => h.id !== id));
   };
 
   // --- PAYMENT LOGIC ---
 
   const handleChargeClick = () => {
+      if (isViewer) return;
+      if (activeStoreId === 'global') {
+          alert("Please select a specific store before making a sale.");
+          return;
+      }
       setPaymentAmount(total.toFixed(2));
       setIsPaymentModalOpen(true);
   };
@@ -294,10 +316,13 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
 
     const finalPaymentMethod = isCredit ? 'Credit' : isPartial ? 'Partial' : paymentMethod;
 
+    // Generate ID locally so we can display it immediately
+    const saleId = `s${Date.now()}`;
+
     const sale: Sale = {
-      id: 'temp', // Assigned in App.tsx
+      id: saleId,
       total: total,
-      date: 'temp', // Assigned in App.tsx
+      date: new Date().toISOString(),
       cashier: user.name,
       cashierId: user.id,
       items: cart.reduce((acc, item) => acc + item.quantity, 0),
@@ -305,10 +330,11 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
       customerName: selectedCustomer?.name || 'Guest',
       amountPaid: isCredit ? 0 : paid,
       paymentMethod: finalPaymentMethod,
-      organizationId: user.organizationId
+      organizationId: user.organizationId,
+      storeId: activeStoreId,
     };
 
-    onAddSale(sale);
+    onAddSale(sale, cart); // Pass cart items for stock update
     setLastSale(sale);
     setIsPaymentModalOpen(false);
     setIsReceiptModalOpen(true);
@@ -384,8 +410,8 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                     return (
                     <div 
                         key={product.id} 
-                        onClick={() => !isOutOfStock && addToCart(product)}
-                        className={`bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-all flex flex-col items-center text-center group ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800' : 'cursor-pointer hover:shadow-md hover:border-primary-300'}`}
+                        onClick={() => !isOutOfStock && !isViewer && addToCart(product)}
+                        className={`bg-neutral-50 dark:bg-neutral-700/50 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 transition-all flex flex-col items-center text-center group ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-neutral-200 dark:bg-neutral-800' : isViewer ? 'cursor-default' : 'cursor-pointer hover:shadow-md hover:border-primary-300'}`}
                     >
                         <div className="w-20 h-20 mb-3 rounded-md bg-white dark:bg-neutral-600 flex items-center justify-center overflow-hidden">
                             {product.imageUrl ? (
@@ -417,7 +443,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
             <div className="flex items-center justify-between mb-3">
                 <h2 className="font-bold text-lg">{t('Current Order')}</h2>
                 <div className="flex gap-1">
-                    {heldCarts.length > 0 && (
+                    {heldCarts.length > 0 && !isViewer && (
                         <button 
                             onClick={() => setIsHeldOrdersOpen(true)}
                             className="relative p-2 text-primary-600 hover:bg-primary-50 rounded-full"
@@ -427,10 +453,10 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                             <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
                         </button>
                     )}
-                     <button onClick={() => cart.length > 0 && setIsHoldModalOpen(true)} disabled={cart.length === 0} className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200 disabled:opacity-50">
+                     <button onClick={() => cart.length > 0 && setIsHoldModalOpen(true)} disabled={cart.length === 0 || isViewer} className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded hover:bg-amber-200 disabled:opacity-50">
                         {t('Hold')}
                      </button>
-                     <button onClick={clearCart} className="text-xs font-medium bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200">
+                     <button onClick={clearCart} disabled={isViewer} className="text-xs font-medium bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200 disabled:opacity-50">
                         {t('Clear Cart')}
                      </button>
                 </div>
@@ -452,15 +478,17 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                             }}
                             className="w-full text-sm bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 rounded-lg pl-9 pr-8 py-2 focus:ring-1 focus:ring-primary-500 focus:outline-none"
                         />
-                         {selectedCustomer && (
+                         {selectedCustomer && !isViewer && (
                              <button onClick={() => { setSelectedCustomer(null); setCustomerQuery(''); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-red-500">
                                  <XCircleIcon className="w-4 h-4" />
                              </button>
                          )}
                     </div>
-                    <button onClick={() => setIsCustomerModalOpen(true)} className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700">
-                        <PlusIcon className="w-5 h-5" />
-                    </button>
+                    {!isViewer && (
+                        <button onClick={() => setIsCustomerModalOpen(true)} className="bg-primary-600 text-white p-2 rounded-lg hover:bg-primary-700">
+                            <PlusIcon className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
                 
                 {/* Dropdown */}
@@ -520,20 +548,27 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center bg-white dark:bg-neutral-700 rounded border border-neutral-300 dark:border-neutral-600">
-                                    <button onClick={() => item.quantity > 1 ? updateQuantity(item.id, -1) : removeFromCart(item.id)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"><MinusIcon className="w-3 h-3" /></button>
-                                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                                    <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"><PlusIcon className="w-3 h-3" /></button>
+                            {!isViewer && (
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center bg-white dark:bg-neutral-700 rounded border border-neutral-300 dark:border-neutral-600">
+                                        <button onClick={() => item.quantity > 1 ? updateQuantity(item.id, -1) : removeFromCart(item.id)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"><MinusIcon className="w-3 h-3" /></button>
+                                        <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                                        <button onClick={() => updateQuantity(item.id, 1)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-600 text-neutral-600 dark:text-neutral-300"><PlusIcon className="w-3 h-3" /></button>
+                                    </div>
+                                    <button 
+                                        onClick={() => openDiscountModal(index)}
+                                        className={`p-1.5 rounded ${hasDiscount ? 'bg-green-100 text-green-700' : 'bg-neutral-200 text-neutral-600'} hover:opacity-80`}
+                                        title="Apply Discount"
+                                    >
+                                        <TagIcon className="w-4 h-4" />
+                                    </button>
                                 </div>
-                                <button 
-                                    onClick={() => openDiscountModal(index)}
-                                    className={`p-1.5 rounded ${hasDiscount ? 'bg-green-100 text-green-700' : 'bg-neutral-200 text-neutral-600'} hover:opacity-80`}
-                                    title="Apply Discount"
-                                >
-                                    <TagIcon className="w-4 h-4" />
-                                </button>
-                            </div>
+                            )}
+                            {isViewer && (
+                                <div className="flex items-center">
+                                    <span className="text-sm font-medium text-neutral-500">x{item.quantity}</span>
+                                </div>
+                            )}
                         </div>
                     );
                 })
@@ -553,7 +588,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                 </div>
             )}
             <div className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400">
-                <span>{t('Tax')} (8%)</span>
+                <span>{t('Tax')} ({taxRate}%)</span>
                 <span>{formatCurrency(tax)}</span>
             </div>
             <div className="flex justify-between text-xl font-bold text-neutral-900 dark:text-neutral-100 pt-2 border-t border-neutral-200 dark:border-neutral-700">
@@ -563,7 +598,7 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
             
             <button 
                 onClick={handleChargeClick}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || isViewer}
                 className="w-full bg-primary-600 text-white font-bold py-3 rounded-lg hover:bg-primary-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
                 {t('Charge')} {formatCurrency(total)}
@@ -660,10 +695,15 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
                     <div className="p-6 text-center">
                         <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <XMarkIcon className="w-8 h-8 rotate-45" /> {/* Using XMark rotated as checkmark, or just import Check */}
+                            <CheckIcon className="w-8 h-8" />
                         </div>
-                        <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">{t('Payment Success')}</h3>
-                        <p className="text-neutral-500 mt-1">Invoice #{lastSale.id}</p>
+                        <h3 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100 mb-1">{t('Payment Success')}</h3>
+                        
+                        {/* Store Name & Invoice ID */}
+                        <div className="mb-4">
+                            <h4 className="text-xl font-bold text-primary-600 dark:text-primary-400">{businessName}</h4>
+                            <p className="text-neutral-500 text-xs">Invoice #{lastSale.id}</p>
+                        </div>
                         
                         <div className="my-6 py-4 border-y border-dashed border-neutral-300 dark:border-neutral-600">
                             <div className="flex justify-between mb-2 text-sm">
@@ -685,9 +725,15 @@ export const POS: React.FC<POSProps> = ({ user, customers, products, onAddSale, 
                                  <ChatBubbleLeftRightIcon className="w-5 h-5" />
                                  WhatsApp Invoice
                              </button>
-                             <button onClick={() => setIsReceiptModalOpen(false)} className="w-full py-3 text-neutral-500 hover:text-neutral-800 font-medium">
-                                 New Sale
-                             </button>
+                             
+                             <div className="flex gap-2">
+                                <button onClick={() => setIsReceiptModalOpen(false)} className="flex-1 py-3 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 rounded-lg font-bold hover:opacity-80">
+                                    OK
+                                </button>
+                                <button onClick={() => setIsReceiptModalOpen(false)} className="flex-1 py-3 bg-primary-100 text-primary-800 dark:bg-primary-900/40 dark:text-primary-300 rounded-lg font-bold hover:bg-primary-200">
+                                    New Sale
+                                </button>
+                             </div>
                         </div>
                     </div>
                </div>

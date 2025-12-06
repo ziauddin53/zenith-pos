@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export enum Role {
@@ -8,16 +7,26 @@ export enum Role {
   Viewer = 'Viewer',
 }
 
+export interface Store {
+  id: string;
+  name: string;
+  location: string;
+  organizationId: string;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   password?: string;
+  phone?: string; // For password recovery
   role: Role;
   avatarUrl: string;
   dashboardWidgets: Record<string, boolean>;
   organizationId?: string;
   isVerified?: boolean; // New field for Email Verification
+  storeAccess: string[]; // ['all'] for full access, otherwise list of store IDs
+  isTwoFactorEnabled?: boolean; // New: 2FA Status
 }
 
 export interface Product {
@@ -33,6 +42,7 @@ export interface Product {
   lowStockThreshold?: number;
   imageUrl?: string;
   organizationId?: string;
+  storeId: string;
 }
 
 export interface CartItem extends Product {
@@ -58,6 +68,7 @@ export interface Customer {
   dueAmount: number;
   creditLimit?: number;
   organizationId?: string;
+  storeId: string;
 }
 
 export interface Sale {
@@ -72,6 +83,7 @@ export interface Sale {
   amountPaid: number;
   paymentMethod: 'Cash' | 'Card' | 'Credit' | 'Partial';
   organizationId?: string;
+  storeId: string;
 }
 
 export interface Expense {
@@ -82,6 +94,7 @@ export interface Expense {
   date: string; // ISO string
   recordedBy: string;
   organizationId?: string;
+  storeId: string;
 }
 
 export interface ActivityLog {
@@ -114,6 +127,7 @@ export interface Supplier {
   phone: string;
   email: string;
   organizationId?: string;
+  storeId: string;
 }
 
 export interface PurchaseOrderItem {
@@ -133,6 +147,7 @@ export interface PurchaseOrder {
   createdAt: string; // ISO string
   createdBy: string;
   organizationId?: string;
+  storeId: string;
 }
 
 export interface Shift {
@@ -154,6 +169,7 @@ export interface LicenseKey {
   validity: 'Lifetime' | string; // 'Lifetime' or ISO date string for expiry
   deviceName: string;
   organizationId?: string;
+  storeId: string;
 }
 
 // The Master License for the Shop Owner
